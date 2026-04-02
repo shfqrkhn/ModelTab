@@ -208,18 +208,23 @@
                     if (msg.role === 'Model') roleIcon = '🤖';
                     else if (msg.role === 'System') roleIcon = '⚙️';
 
-                    let hasOutput = false;
-                    if (includeThoughts && msg.hasThoughts) {
+                    const willHaveThoughts = includeThoughts && msg.hasThoughts;
+
+                    if (willHaveThoughts || msg.content) {
+                        parts.push('## ', roleIcon, ' ', msg.role, '\n\n');
+                    }
+
+                    if (willHaveThoughts) {
                         // Optimization: replace is ~2.6x faster than split/map/join
                         const indentedThoughts = '> ' + msg.thoughts.replace(/\n/g, '\n> ');
                         parts.push('> **🧠 Thinking Process**\n> \n', indentedThoughts, '\n\n');
-                        hasOutput = true;
                     }
 
                     if (msg.content) {
-                        parts.push('## ', roleIcon, ' ', msg.role, '\n\n', msg.content, '\n\n---\n\n');
-                        hasOutput = true;
-                    } else if (hasOutput) {
+                        parts.push(msg.content, '\n\n');
+                    }
+
+                    if (willHaveThoughts || msg.content) {
                         parts.push('---\n\n');
                     }
                 }
@@ -438,7 +443,7 @@
                             <p className="text-slate-500 max-w-2xl mx-auto">
                                 Drag and drop your Google AI Studio export JSON files to extract a clean, readable Markdown chat history.
                             </p>
-                            <p className="text-xs text-slate-400 font-mono">v1.2.39</p>
+                            <p className="text-xs text-slate-400 font-mono">v1.2.40</p>
                         </div>
 
                         {/* Main Grid */}
