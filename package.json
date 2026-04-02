@@ -1,6 +1,6 @@
 {
   "name": "ai-studio-cleaner",
-  "version": "1.2.39",
+  "version": "1.2.40",
   "description": "A lightweight, browser-based tool to parse and clean up exported chat history JSON files from Google AI Studio.",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
