@@ -10,18 +10,21 @@
 ## Repository Map
 ```
 .
-├── .jules/
-│   └── steward.md
+├── .jules
+│   └── steward.md
+├── CLAUDE.md
+├── LICENSE
+├── README.md
 ├── benchmark_icon_paths.js
 ├── benchmark_loop.js
 ├── benchmark_markdown_gen.js
 ├── benchmark_optimization.js
-├── CLAUDE.md
 ├── index.html
-├── LICENSE
 ├── package.json
-├── README.md
+├── screenshot.png
 └── simulation_stress_test.js
+
+2 directories, 12 files
 ```
 
 ## Authoritative Review Summary
@@ -48,7 +51,6 @@
 | `screenshot.png` | Asset | Context | Excluded | Visual asset for README. |
 
 ## Embedded Critical Files
-
 ### `index.html`
 - exact relative path: `index.html`
 - role: Main Application
@@ -94,7 +96,7 @@
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useMemo, useCallback } = React;
+        const { useState, useMemo, useCallback, useRef } = React;
 
         // --- ICONS (Inline SVGs to avoid complex CDN imports) ---
         // Optimization: Component memoized to prevent re-renders when path and className are stable
@@ -251,9 +253,10 @@
         const generateMarkdown = (parsedData, includeThoughts) => {
             const parts = [];
 
-            for (const { name, conversation, error } of parsedData) {
+            for (const { name, conversation, error, errorMessage } of parsedData) {
                 if (error) {
-                    parts.push('> ⚠️ Error parsing file: ', name, '\n\n');
+                    const reason = errorMessage || 'Invalid or unsupported JSON format';
+                    parts.push('> ⚠️ Error parsing file: ', name, ' (', reason, ')\n\n');
                     continue;
                 }
 
@@ -264,18 +267,23 @@
                     if (msg.role === 'Model') roleIcon = '🤖';
                     else if (msg.role === 'System') roleIcon = '⚙️';
 
-                    let hasOutput = false;
-                    if (includeThoughts && msg.hasThoughts) {
+                    const willHaveThoughts = includeThoughts && msg.hasThoughts;
+
+                    if (willHaveThoughts || msg.content) {
+                        parts.push('## ', roleIcon, ' ', msg.role, '\n\n');
+                    }
+
+                    if (willHaveThoughts) {
                         // Optimization: replace is ~2.6x faster than split/map/join
                         const indentedThoughts = '> ' + msg.thoughts.replace(/\n/g, '\n> ');
                         parts.push('> **🧠 Thinking Process**\n> \n', indentedThoughts, '\n\n');
-                        hasOutput = true;
                     }
 
                     if (msg.content) {
-                        parts.push('## ', roleIcon, ' ', msg.role, '\n\n', msg.content, '\n\n---\n\n');
-                        hasOutput = true;
-                    } else if (hasOutput) {
+                        parts.push(msg.content, '\n\n');
+                    }
+
+                    if (willHaveThoughts || msg.content) {
                         parts.push('---\n\n');
                     }
                 }
@@ -285,7 +293,11 @@
         };
 
         const MAX_PREVIEW_LENGTH = 100000;
+        const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10MB guardrail for browser memory safety
         const BATCH_SIZE = 500;
+        const normalizeFileName = (name) => String(name || 'unknown').replace(/[\r\n\t]+/g, ' ').trim();
+        const safeDownloadName = (name) => normalizeFileName(name).replace(/[<>:"/\\|?*\x00-\x1F]/g, '_');
+        const isSupportedFile = (fileName) => /\.(json|txt)$/i.test(normalizeFileName(fileName));
 
         function App() {
             const [fileCount, setFileCount] = useState(0);
@@ -296,45 +308,79 @@
             const [isProcessing, setIsProcessing] = useState(false);
             const [dragActive, setDragActive] = useState(false);
             const [copySuccess, setCopySuccess] = useState(false);
+            const processingRef = useRef(false);
 
             const handleFiles = useCallback(async (fileList) => {
+                if (processingRef.current) return;
+                processingRef.current = true;
                 setIsProcessing(true);
-                const newFiles = Array.from(fileList);
+                try {
+                    const newFiles = Array.from(fileList);
+                    const oversizedResults = [];
+                    const validFiles = [];
 
-                for (let i = 0; i < newFiles.length; i += BATCH_SIZE) {
-                    const batch = newFiles.slice(i, i + BATCH_SIZE);
-                    const batchResults = await Promise.all(batch.map(async (file) => {
-                        try {
-                            const text = await file.text();
-                            const conversation = parseAIStudioJSON(text);
-                            return { name: file.name, conversation, error: !conversation };
-                        } catch (e) {
-                            return { name: file.name, error: true };
-                        }
-                    }));
-
-                    let currentBatchErrors = 0;
-                    for (let j = 0; j < batchResults.length; j++) {
-                        if (batchResults[j].error) {
-                            currentBatchErrors++;
+                    for (const file of newFiles) {
+                        const normalizedName = normalizeFileName(file.name);
+                        if (!isSupportedFile(normalizedName)) {
+                            oversizedResults.push({
+                                name: normalizedName,
+                                error: true,
+                                errorMessage: 'Unsupported file type (use .json or .txt)'
+                            });
+                        } else if (file.size > MAX_FILE_SIZE_BYTES) {
+                            oversizedResults.push({
+                                name: normalizedName,
+                                error: true,
+                                errorMessage: 'File exceeds 10MB limit'
+                            });
+                        } else {
+                            validFiles.push(file);
                         }
                     }
 
-                    setParsedData(prev => [...prev, ...batchResults]);
-                    setFileCount(prev => prev + batch.length);
-                    if (currentBatchErrors > 0) {
-                        setErrorCount(prev => prev + currentBatchErrors);
+                    if (oversizedResults.length > 0) {
+                        setParsedData(prev => [...prev, ...oversizedResults]);
+                        setFileCount(prev => prev + oversizedResults.length);
+                        setErrorCount(prev => prev + oversizedResults.length);
+                        setOutputChunks(prev => [...prev, generateMarkdown(oversizedResults, includeThoughts)]);
                     }
 
-                    // Optimization: Incrementally append markdown chunks to prevent O(N^2)
-                    const batchMarkdown = generateMarkdown(batchResults, includeThoughts);
-                    setOutputChunks(prev => [...prev, batchMarkdown]);
+                    for (let i = 0; i < validFiles.length; i += BATCH_SIZE) {
+                        const batch = validFiles.slice(i, i + BATCH_SIZE);
+                        const batchResults = await Promise.all(batch.map(async (file) => {
+                            try {
+                                const text = await file.text();
+                                const conversation = parseAIStudioJSON(text);
+                                return { name: normalizeFileName(file.name), conversation, error: !conversation };
+                            } catch (e) {
+                                return { name: normalizeFileName(file.name), error: true };
+                            }
+                        }));
 
-                    // Yield to main thread to maintain UI responsiveness
-                    await new Promise(resolve => setTimeout(resolve, 0));
+                        let currentBatchErrors = 0;
+                        for (let j = 0; j < batchResults.length; j++) {
+                            if (batchResults[j].error) {
+                                currentBatchErrors++;
+                            }
+                        }
+
+                        setParsedData(prev => [...prev, ...batchResults]);
+                        setFileCount(prev => prev + batch.length);
+                        if (currentBatchErrors > 0) {
+                            setErrorCount(prev => prev + currentBatchErrors);
+                        }
+
+                        // Optimization: Incrementally append markdown chunks to prevent O(N^2)
+                        const batchMarkdown = generateMarkdown(batchResults, includeThoughts);
+                        setOutputChunks(prev => [...prev, batchMarkdown]);
+
+                        // Yield to main thread to maintain UI responsiveness
+                        await new Promise(resolve => setTimeout(resolve, 0));
+                    }
+                } finally {
+                    processingRef.current = false;
+                    setIsProcessing(false);
                 }
-
-                setIsProcessing(false);
             }, [includeThoughts]);
 
             const handleToggleThoughts = useCallback(async () => {
@@ -418,7 +464,7 @@
 
                 let filename = "cleaned_chat_history.md";
                 if (parsedData.length === 1 && parsedData[0].name) {
-                    filename = parsedData[0].name.replace(/\.(json|txt)$/i, '') + '.md';
+                    filename = safeDownloadName(parsedData[0].name).replace(/\.(json|txt)$/i, '') + '.md';
                 }
 
                 element.download = filename;
@@ -456,7 +502,7 @@
                             <p className="text-slate-500 max-w-2xl mx-auto">
                                 Drag and drop your Google AI Studio export JSON files to extract a clean, readable Markdown chat history.
                             </p>
-                            <p className="text-xs text-slate-400 font-mono">v1.2.34</p>
+                            <p className="text-xs text-slate-400 font-mono">v1.2.40</p>
                         </div>
 
                         {/* Main Grid */}
@@ -488,6 +534,7 @@
                                     </div>
                                     <h3 className="font-semibold text-lg text-slate-700 mb-1">Upload JSON</h3>
                                     <p className="text-sm text-slate-500">Drag & drop or click to browse</p>
+                                    <p className="mt-2 text-xs text-slate-400">Supports .json/.txt, max 10MB per file</p>
                                 </div>
 
                                 {/* Controls */}
@@ -580,17 +627,18 @@
         root.render(<App />);
     </script>
 </body>
-</html>```
+</html>
+```
 
 ### `package.json`
 - exact relative path: `package.json`
-- role: Project Metadata and Scripts
-- why it matters: Tracks versioning (Sync Mandate) and exposes the critical test/benchmark commands required to validate changes.
+- role: Metadata & Scripts
+- why it matters: Defines the project version and test runner commands. Must be the single source of truth for versions.
 - inclusion mode: Full
 ```json
 {
   "name": "ai-studio-cleaner",
-  "version": "1.2.34",
+  "version": "1.2.40",
   "description": "A lightweight, browser-based tool to parse and clean up exported chat history JSON files from Google AI Studio.",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
@@ -615,8 +663,8 @@
 
 ### `.jules/steward.md`
 - exact relative path: `.jules/steward.md`
-- role: Architectural Constraints and AI Protocols
-- why it matters: Dictates required performance patterns (e.g., tracking scalar variables vs arrays of objects to prevent memory leaks), accessibility rules (`role="switch"`, `aria-hidden`), and Tailwind CDN limitations.
+- role: Architecture Rules
+- why it matters: Defines critical constraints for maintaining performance, UX, and code hygiene across iterations.
 - inclusion mode: Full
 ```markdown
 ## 2026-01-25 - [Sentinel] - [Tailwind Play CDN CORS Constraint]
@@ -669,7 +717,7 @@
 - inclusion mode: Excerpt
 - minimal note: The 'Chaos Mode' test generation logic, covering edge cases like null values, empty thoughts, and type variations that `parseAIStudioJSON` must handle safely.
 ```javascript
-    const chaosFiles = [
+const chaosFiles = [
         { name: "bad_json.json", content: "{ unquoted: key }" },
         { name: "empty.json", content: "" },
         { name: "null.json", content: "null" },
