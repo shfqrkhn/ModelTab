@@ -3,10 +3,11 @@
 Clean Google AI Studio chat exports into readable Markdown.
 
 - **Status:** Stable companion utility
-- **Live Demo:** [shfqrkhn.github.io/AI-Studio-Cleaner](https://shfqrkhn.github.io/AI-Studio-Cleaner/)
+- **Canonical Home:** [ModelTab/tools/ai-studio-cleaner](https://github.com/shfqrkhn/ModelTab/tree/main/tools/ai-studio-cleaner)
+- **Live Demo:** [shfqrkhn.github.io/ModelTab/tools/ai-studio-cleaner](https://shfqrkhn.github.io/ModelTab/tools/ai-studio-cleaner/)
 - **Portfolio Role:** AI utility supporting the ModelTab flagship.
 
-AI Studio Cleaner is a lightweight browser app for parsing exported Google AI Studio conversation JSON files and converting them into clean Markdown, optionally including or hiding model reasoning blocks.
+AI Studio Cleaner is a lightweight browser app inside `ModelTab` for parsing exported Google AI Studio conversation JSON files and converting them into clean Markdown, optionally including or hiding model reasoning blocks.
 
 ## Screenshot
 
@@ -42,21 +43,22 @@ AI Studio exports are useful but noisy. This tool turns them into portable, read
 
 ## Relationship To Other Projects
 
-This repo is a stable companion to `ModelTab`. Keep it focused on AI Studio export cleanup; broader AI chat, BYOK provider setup, and future import workflows belong in `ModelTab`.
+This utility is maintained inside `ModelTab`. Keep it focused on AI Studio export cleanup; broader AI chat, BYOK provider setup, and future import workflows belong in the parent app.
 
 ## Repository Layout
 
 ```text
-.
+tools/ai-studio-cleaner/
 ├── index.html
 ├── screenshot.png
 ├── package.json
-└── benchmark_*.js
+├── benchmark_*.js
+└── simulation_stress_test.js
 ```
 
 ## Deployment
 
-Host the repository root on GitHub Pages or open `index.html` locally.
+Open `index.html` locally, or serve it through the ModelTab GitHub Pages deployment at `/ModelTab/tools/ai-studio-cleaner/`.
 
 ## Maintenance
 

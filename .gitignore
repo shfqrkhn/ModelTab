@@ -15,6 +15,9 @@ coverage/
 
 modeltab-data-*.json
 modeltab-full-backup-*.json
+ai-studio-export*.json
+google-ai-studio-*.json
+aistudio-*.json
 
 e2e-harness.mjs
 lm-studio-harness.mjs
