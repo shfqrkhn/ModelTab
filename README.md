@@ -1,53 +1,67 @@
-# AI Studio History Cleaner v1.2.40
+# AI Studio Cleaner
 
-A lightweight, browser-based tool to parse and clean up exported chat history JSON files from Google AI Studio. It extracts the conversation into a clean, readable Markdown format, with optional support for including "Thinking" (Reasoning) blocks.
+Clean Google AI Studio chat exports into readable Markdown.
 
-[**Live Demo**](https://shfqrkhn.github.io/AI-Studio-Cleaner/)
+- **Status:** Stable companion utility
+- **Live Demo:** [shfqrkhn.github.io/AI-Studio-Cleaner](https://shfqrkhn.github.io/AI-Studio-Cleaner/)
+- **Portfolio Role:** AI utility supporting the ModelTab flagship.
 
-![Screenshot](./screenshot.png)
+AI Studio Cleaner is a lightweight browser app for parsing exported Google AI Studio conversation JSON files and converting them into clean Markdown, optionally including or hiding model reasoning blocks.
 
-## 🚀 Features
+## Screenshot
 
-- **Drag & Drop Interface**: Easily upload multiple JSON export files at once.
-- **Smart Parsing**: Automatically handles different JSON structures (`chunks`, `parts`, etc.) found in AI Studio exports.
-- **Reasoning Toggle**: Choose whether to include or hide the internal "Thinking" blocks from the model.
-- **Markdown Preview**: View the generated Markdown directly in the browser.
-- **One-Click Copy/Download**: Copy the result to your clipboard or download it as a `.md` file.
-- **Zero Dependencies**: Runs entirely in the browser using a single HTML file. No backend or build step required.
+![AI Studio Cleaner interface](./screenshot.png)
 
-## 🛠️ How to Use
+## Why This Exists
 
-### Option 1: Live Demo (GitHub Pages)
+AI Studio exports are useful but noisy. This tool turns them into portable, readable documents for review, archiving, migration, and reuse.
 
-https://shfqrkhn.github.io/AI-Studio-Cleaner/
+## What It Does
 
-### Option 2: Run Locally
+- Accepts Google AI Studio JSON export files in the browser.
+- Handles common export shapes such as chunks and parts.
+- Lets users include or omit thinking/reasoning blocks.
+- Previews generated Markdown.
+- Copies or downloads the cleaned output.
+- Runs as static files with no backend.
 
-1. Download the `index.html` file from this repository.
-2. Double-click `index.html` to open it in your web browser.
-3. Drag and drop your Google AI Studio `.json` files into the upload zone.
+## Quick Start
 
-## 📦 Deployment
+1. Open the live demo.
+2. Drop or select one or more AI Studio JSON export files.
+3. Choose whether to include reasoning blocks.
+4. Review the Markdown.
+5. Copy or download the result.
 
-This project is designed to be hosted effortlessly on **GitHub Pages** without any build process (npm/yarn/vite).
+## Privacy And Data Model
 
-1. **Fork or Clone** this repository.
-2. Ensure `index.html` is in the root directory.
-3. Go to your repository **Settings** > **Pages**.
-4. Under **Source**, select `Deploy from a branch`.
-5. Under **Branch**, select `main` (or `master`) and `/ (root)`.
-6. Click **Save**.
+- Files are processed locally in the browser.
+- No server upload is required for normal use.
+- No account, telemetry, or bundled API key.
+- Users should review cleaned output before sharing it externally.
 
-Your site will be live in a few moments!
+## Relationship To Other Projects
 
-## 💻 Tech Stack
+This repo is a stable companion to `ModelTab`. Keep it focused on AI Studio export cleanup; broader AI chat, BYOK provider setup, and future import workflows belong in `ModelTab`.
 
-- **React 18** (via CDN)
-- **Tailwind CSS** (via CDN for styling)
-- **Babel Standalone** (for in-browser JSX compilation)
-- **Inline SVG Icons** (custom lightweight icons)
+## Repository Layout
 
-## 📄 License
+```text
+.
+├── index.html
+├── screenshot.png
+├── package.json
+└── benchmark_*.js
+```
 
+## Deployment
 
-MIT License - feel free to use, modify, and distribute as you wish.
+Host the repository root on GitHub Pages or open `index.html` locally.
+
+## Maintenance
+
+Maintenance-only unless Google AI Studio changes its export format or the parser needs compatibility updates.
+
+## License
+
+See `LICENSE`.
