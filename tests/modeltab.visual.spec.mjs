@@ -43,12 +43,14 @@ test.afterAll(async () => {
 });
 
 for (const viewport of [
+  { width: 320, height: 568 },
   { width: 360, height: 740 },
   { width: 390, height: 844 },
   { width: 768, height: 1024 },
   { width: 1280, height: 800 },
   { width: 1920, height: 1080 },
-  { width: 3840, height: 2160 }
+  { width: 3840, height: 2160 },
+  { width: 7680, height: 4320 }
 ]) {
   test(`responsive shell has no horizontal scroll at ${viewport.width}x${viewport.height}`, async ({ page }) => {
     page.on("dialog", (dialog) => {
@@ -77,6 +79,25 @@ for (const viewport of [
         sidebarHidden: document.querySelector(".sidebar")?.getAttribute("aria-hidden") === "true",
         settingsHidden: document.querySelector(".settings-panel")?.getAttribute("aria-hidden") === "true",
         promptVisible: getComputedStyle(document.querySelector("#promptInput")).display !== "none",
+        offscreenVisible: [...document.querySelectorAll("body *")]
+          .filter((element) => {
+            if (element.closest('.sidebar[aria-hidden="true"], .settings-panel[aria-hidden="true"]')) return false;
+            const style = getComputedStyle(element);
+            if (style.display === "none" || style.visibility === "hidden" || Number(style.opacity) === 0) return false;
+            const box = element.getBoundingClientRect();
+            return box.width > 0 && box.height > 0 && (box.left < -1 || box.right > window.innerWidth + 1);
+          })
+          .map((element) => {
+            const box = element.getBoundingClientRect();
+            return {
+              tag: element.tagName.toLowerCase(),
+              id: element.id,
+              className: String(element.className || "").slice(0, 80),
+              text: (element.textContent || "").trim().slice(0, 80),
+              left: Math.round(box.left),
+              right: Math.round(box.right)
+            };
+          }),
         undersizedButtons: [...document.querySelectorAll("button")]
           .filter((button) => {
             const box = button.getBoundingClientRect();
@@ -88,6 +109,7 @@ for (const viewport of [
     });
 
     expect(audit.overflowX).toBe(0);
+    expect(audit.offscreenVisible).toEqual([]);
     expect(audit.workspace?.width).toBeGreaterThan(0);
     expect(audit.messageList?.height).toBeGreaterThan(120);
     expect(audit.composer?.height).toBeGreaterThan(70);
