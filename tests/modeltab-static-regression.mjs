@@ -28,6 +28,7 @@ function includesAll(source, values) {
 check("no JS popup APIs in app shell", !/\b(alert|confirm|prompt)\s*\(/.test(`${files.html}\n${files.app}`));
 check("CSP blocks inline and third-party script execution", /Content-Security-Policy/.test(files.html) && /script-src 'self'/.test(files.html) && /object-src 'none'/.test(files.html));
 check("static local mode skips manifest and service worker", includesAll(files.app, ["function attachManifest()", "if (!isHttpLikePage()) return;", "function registerServiceWorker()", "serviceWorker"]));
+check("local-file smoke gate exists", files.readme.includes("npm run test:local-file") && read("tests/modeltab.local-file-smoke.mjs").includes("local-file contract smoke"));
 check("no horizontal document overflow policy", includesAll(files.css, ["overflow-x: hidden", "minmax(0, 1fr)", ".markdown pre"]));
 check("outer panes collapse and overlay consistently", includesAll(files.css, [".app-shell.sidebar-collapsed", ".app-shell.settings-collapsed", "@media (max-width: 1600px)", "@media (max-width: 980px)", "--pane-transition"]));
 check("compact next actions keep usable target height", !/\.next-actions button\s*\{[^}]*min-height:\s*30px/s.test(files.css));

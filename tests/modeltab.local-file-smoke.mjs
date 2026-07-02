@@ -1,0 +1,51 @@
+import { existsSync, readFileSync } from "node:fs";
+import { join, normalize } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const root = fileURLToPath(new URL("..", import.meta.url));
+const read = (path) => readFileSync(join(root, path), "utf8");
+
+const html = read("index.html");
+const app = read("app.js");
+const serviceWorker = read("service-worker.js");
+const manifest = JSON.parse(read("manifest.webmanifest"));
+
+const failures = [];
+
+function check(name, condition, detail = "") {
+  if (!condition) failures.push(`${name}${detail ? `: ${detail}` : ""}`);
+}
+
+function localPath(path) {
+  const cleaned = path.replace(/^\.\//, "");
+  return normalize(join(root, cleaned));
+}
+
+const assetRefs = [
+  ...[...html.matchAll(/<(?:script|link)\b[^>]*(?:src|href)="([^"]+)"/g)].map((match) => match[1]),
+  ...[...serviceWorker.matchAll(/"(\.\/[^"]+)"/g)].map((match) => match[1]),
+  ...(manifest.icons || []).map((icon) => icon.src)
+]
+  .filter((ref) => ref && !ref.startsWith("data:"));
+
+for (const ref of assetRefs) {
+  check("asset reference is local-relative", !/^(?:https?:)?\/\//.test(ref) && !ref.startsWith("/"), ref);
+  check("asset exists beside extracted app", existsSync(localPath(ref)), ref);
+}
+
+check("index has no manifest link that would force file-mode fetch", !/<link\b[^>]*rel="manifest"/i.test(html));
+check("manifest is attached only after HTTP-like check", /function attachManifest\(\)\s*\{\s*if \(!isHttpLikePage\(\)\) return;/s.test(app));
+check("service worker registers only after HTTP-like check", /function registerServiceWorker\(\)\s*\{\s*if \(isHttpLikePage\(\) && "serviceWorker" in navigator\)/s.test(app));
+check("file-mode user notice is present", app.includes("Local file mode.") && app.includes("ordinary chat still works from this file"));
+check("runtime has no bundled remote scripts", !/<script\b[^>]*src="https?:\/\//i.test(html));
+check("runtime has no bundled remote styles", !/<link\b[^>]*href="https?:\/\//i.test(html));
+check("PWA start URL stays relative", manifest.start_url === "./");
+check("PWA scope stays relative", manifest.scope === "./");
+check("service worker shell excludes provider/API URLs", !/api\.openai|generativelanguage|localhost:1234|openrouter/i.test(serviceWorker));
+
+if (failures.length) {
+  failures.forEach((failure) => console.error(`FAIL ${failure}`));
+  process.exit(1);
+}
+
+console.log(`PASS local-file contract smoke (${assetRefs.length} local asset references verified)`);

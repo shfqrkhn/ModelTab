@@ -65,6 +65,7 @@ AI Studio export cleanup:
 ## Quality Gates
 
 - Static regression gate: `npm test`
+- Local-file contract smoke: `npm run test:local-file`
 - Responsive visual gate: `npm run test:visual`
 - Local provider smoke gate: `npm run test:provider`
 - Before release, also run syntax checks, a secret scan, README link/media checks, local static smoke, provider setup smoke, and GitHub Pages checks.
