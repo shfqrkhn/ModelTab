@@ -2,7 +2,7 @@ import { test, expect } from "@playwright/test";
 import { createServer } from "node:http";
 import { readFile } from "node:fs/promises";
 import { extname, join, normalize } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
 let server;
@@ -115,4 +115,28 @@ test("mobile drawer and prompt-library affordances are reachable", async ({ page
   await expect(page.locator("#settingsPanel")).toHaveClass(/open/);
   await expect(page.locator("#promptLibrarySettingsDetails")).toHaveJSProperty("open", true);
   await expect(page.locator("#promptSearchInput")).toBeFocused();
+});
+
+test("downloaded index.html launches directly from file mode", async ({ page }) => {
+  page.on("dialog", (dialog) => {
+    throw new Error(`Unexpected JavaScript dialog: ${dialog.type()}`);
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(pathToFileURL(join(root, "index.html")).href);
+  await expect(page.locator(".workspace")).toBeVisible();
+  await expect(page.locator("#promptInput")).toBeVisible();
+  await expect(page.locator("#runtimeNotice")).toContainText("Local file mode");
+
+  const audit = await page.evaluate(() => ({
+    overflowX: Math.max(
+      0,
+      document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      document.body.scrollWidth - document.body.clientWidth
+    ),
+    hasManifestLink: Boolean(document.querySelector('link[rel="manifest"]')),
+    serviceWorkerControlled: Boolean(navigator.serviceWorker?.controller)
+  }));
+  expect(audit.overflowX).toBe(0);
+  expect(audit.hasManifestLink).toBe(false);
+  expect(audit.serviceWorkerControlled).toBe(false);
 });

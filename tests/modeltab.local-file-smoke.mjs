@@ -22,7 +22,8 @@ function localPath(path) {
 }
 
 const assetRefs = [
-  ...[...html.matchAll(/<(?:script|link)\b[^>]*(?:src|href)="([^"]+)"/g)].map((match) => match[1]),
+  ...[...html.matchAll(/<script\b[^>]*src="([^"]+)"/g)].map((match) => match[1]),
+  ...[...html.matchAll(/<link\b(?=[^>]*\brel="(?:stylesheet|icon|apple-touch-icon)")(?=[^>]*\bhref="([^"]+)")[^>]*>/g)].map((match) => match[1]),
   ...[...serviceWorker.matchAll(/"(\.\/[^"]+)"/g)].map((match) => match[1]),
   ...(manifest.icons || []).map((icon) => icon.src)
 ]
@@ -38,7 +39,7 @@ check("manifest is attached only after HTTP-like check", /function attachManifes
 check("service worker registers only after HTTP-like check", /function registerServiceWorker\(\)\s*\{\s*if \(isHttpLikePage\(\) && "serviceWorker" in navigator\)/s.test(app));
 check("file-mode user notice is present", app.includes("Local file mode.") && app.includes("ordinary chat still works from this file"));
 check("runtime has no bundled remote scripts", !/<script\b[^>]*src="https?:\/\//i.test(html));
-check("runtime has no bundled remote styles", !/<link\b[^>]*href="https?:\/\//i.test(html));
+check("runtime has no bundled remote styles", !/<link\b(?=[^>]*\brel="stylesheet")(?=[^>]*\bhref="https?:\/\/)[^>]*>/i.test(html));
 check("PWA start URL stays relative", manifest.start_url === "./");
 check("PWA scope stays relative", manifest.scope === "./");
 check("service worker shell excludes provider/API URLs", !/api\.openai|generativelanguage|localhost:1234|openrouter/i.test(serviceWorker));

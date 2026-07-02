@@ -119,3 +119,46 @@ test("corrupt or hostile local state fails closed into a usable default app", as
   await expect(page.locator("#promptInput")).toBeVisible();
   await expect.poll(() => page.evaluate(() => Object.prototype.polluted)).toBeUndefined();
 });
+
+test("hostile persisted content renders as inert text", async ({ page }) => {
+  const dialogs = [];
+  page.on("dialog", async (dialog) => {
+    dialogs.push(dialog.message());
+    await dialog.dismiss();
+  });
+  await page.addInitScript(() => {
+    const payload = `<img src=x onerror="window.__modeltabPwned=1"> [bad](javascript:alert(1)) [safe](https://example.com/?q=" onmouseover="alert(1))`;
+    localStorage.setItem("modeltab-state-v1", JSON.stringify({
+      activeProviderId: "hostile-provider",
+      providers: [{
+        id: "hostile-provider",
+        name: "Hostile <b>Provider</b>",
+        type: "openai",
+        baseUrl: "http://127.0.0.1:1234/v1",
+        model: "hostile-model",
+        noAuth: true
+      }],
+      folders: [{ id: "folder-xss", name: "Folder <svg onload=alert(1)>", parentId: "" }],
+      conversations: [{
+        id: "chat-xss",
+        title: "Title <script>alert(1)</script>",
+        folderId: "folder-xss",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        messages: [
+          { id: "message-user", role: "user", content: payload, createdAt: new Date().toISOString() },
+          { id: "message-assistant", role: "assistant", content: `**Answer**\n\n${payload}`, createdAt: new Date().toISOString() }
+        ]
+      }],
+      activeConversationId: "chat-xss"
+    }));
+  });
+
+  await page.goto(appUrl);
+  await expect(page.locator(".workspace")).toBeVisible();
+  await expect(page.locator(".message")).toHaveCount(2);
+  await expect(page.locator(".message .markdown img")).toHaveCount(0);
+  await expect(page.locator('.message .markdown a[href^="javascript:"]')).toHaveCount(0);
+  await expect.poll(() => page.evaluate(() => window.__modeltabPwned)).toBeUndefined();
+  expect(dialogs).toEqual([]);
+});

@@ -1735,7 +1735,7 @@ function renderMessage(message, index) {
   ].filter(Boolean);
   const actions = `<div class="message-actions">${renderButtons(actionButtons)}</div>`;
   return `<article class="message ${escapeAttr(message.role)} ${message.error ? "error" : ""}">
-    <div class="role">${message.role}</div>
+    <div class="role">${escapeHtml(message.role)}</div>
     <div class="bubble">
       ${attachments}
       <div class="markdown">${renderMarkdown(message.content || "")}</div>
