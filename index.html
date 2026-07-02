@@ -1,0 +1,382 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#181917" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; base-uri 'none'; object-src 'none'; form-action 'none'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; connect-src https: http:; worker-src 'self'; manifest-src 'self'"
+    />
+    <meta
+      name="description"
+      content="ModelTab is a no-install BYOK AI studio for OpenAI-compatible endpoints and Gemini API keys."
+    />
+    <title>ModelTab</title>
+    <link rel="icon" href="./icons/icon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar" aria-label="Conversations">
+        <div class="brand">
+          <div class="brand-mark" aria-hidden="true">M</div>
+          <div>
+            <h1>ModelTab</h1>
+            <p>Every model. One tab.</p>
+          </div>
+        </div>
+
+        <div class="sidebar-actions">
+          <button id="newChatBtn" class="primary-btn" type="button">New Chat</button>
+          <button id="newFolderBtn" class="small-btn" type="button">Folder</button>
+          <button id="exportBtn" class="icon-btn" type="button" title="Export data" aria-label="Export data">⇩</button>
+          <button id="importBtn" class="icon-btn" type="button" title="Import data" aria-label="Import data">⇧</button>
+          <input id="importInput" class="visually-hidden" type="file" accept="application/json" />
+        </div>
+
+        <label class="search-box">
+          <span>Search</span>
+          <input id="searchInput" type="search" placeholder="Chats and messages" autocomplete="off" />
+        </label>
+
+        <div class="library-actions" aria-label="Chat library filters">
+          <button id="archiveToggleBtn" class="small-btn" type="button" aria-pressed="false">Archived</button>
+        </div>
+
+        <nav id="conversationList" class="conversation-list" aria-label="Saved chats"></nav>
+      </aside>
+
+      <main class="workspace">
+        <header class="topbar">
+          <button id="sidebarToggle" class="icon-btn" type="button" aria-label="Toggle conversations" title="Toggle conversations">☰</button>
+          <div class="chat-heading">
+            <input id="chatTitleInput" aria-label="Chat title" />
+            <p id="chatMeta">No provider connected</p>
+          </div>
+          <div class="topbar-actions">
+            <select id="providerSelect" aria-label="Provider"></select>
+            <input id="modelInput" aria-label="Model" list="modelList" placeholder="model" />
+            <datalist id="modelList"></datalist>
+            <button id="settingsBtn" class="icon-btn" type="button" aria-label="Settings" title="Settings">⚙</button>
+          </div>
+        </header>
+
+        <section id="runtimeNotice" class="notice" aria-label="Runtime notice">
+          <strong>ModelTab direct mode.</strong>
+          AI inference runs on the selected provider endpoint. This app does not run local models, local RAG, or document
+          parsing; it only stores your local settings/history and sends chat context to the provider you choose.
+        </section>
+
+        <section class="readiness" aria-label="Readiness check">
+          <div>
+            <strong id="readinessTitle">Checking setup</strong>
+            <p id="readinessDetail">ModelTab is validating provider, model, key, connection, and local recovery state.</p>
+          </div>
+          <div id="nextActions" class="next-actions" aria-label="Suggested next actions"></div>
+        </section>
+
+        <section id="messageList" class="message-list" aria-live="polite"></section>
+
+        <section class="composer-panel" aria-label="Message composer">
+          <div id="promptQuickPanel" class="prompt-quick-panel" hidden></div>
+          <div id="intentActions" class="intent-actions" aria-label="Intent shortcuts"></div>
+          <div id="attachmentTray" class="attachment-tray" hidden></div>
+          <div class="composer">
+            <textarea id="promptInput" rows="3" placeholder="Ask anything. Shift+Enter for a new line."></textarea>
+            <div class="composer-actions">
+              <button id="promptLibraryBtn" class="icon-btn" type="button" title="Prompt library" aria-label="Prompt library">⌘</button>
+              <button id="saveDraftPromptBtn" class="icon-btn" type="button" title="Save draft as prompt" aria-label="Save draft as prompt">★</button>
+              <button id="attachBtn" class="icon-btn" type="button" title="Attach images" aria-label="Attach images">⊕</button>
+              <input id="imageInput" class="visually-hidden" type="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple />
+              <button id="stopBtn" class="danger-btn" type="button" hidden>Stop</button>
+              <button id="sendBtn" class="send-btn" type="button">Send</button>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <aside id="settingsPanel" class="settings-panel" aria-label="Settings">
+        <div class="settings-header">
+          <div>
+            <h2>Settings</h2>
+            <p>Providers, memory, model controls, and key vault.</p>
+          </div>
+          <button id="closeSettingsBtn" class="icon-btn" type="button" aria-label="Close settings">×</button>
+        </div>
+
+        <div class="settings-scroll">
+          <section class="settings-card provider-card">
+            <div class="section-title">
+              <h3>Provider</h3>
+              <button id="addProviderBtn" class="small-btn" type="button">Add</button>
+            </div>
+            <label>
+              Active profile
+              <select id="settingsProviderSelect"></select>
+            </label>
+            <label>
+              Provider preset
+              <select id="providerPresetSelect"></select>
+            </label>
+            <p id="providerPresetHelp" class="hint"></p>
+            <label>
+              Base URL
+              <input id="providerBaseInput" spellcheck="false" />
+            </label>
+            <div class="button-row">
+              <button id="saveProviderBtn" class="primary-btn" type="button">Save Provider</button>
+              <button id="fetchModelsBtn" class="small-btn" type="button">Fetch Models</button>
+            </div>
+            <p id="providerStatus" class="status-line" role="status"></p>
+
+            <details id="providerAdvancedDetails" class="settings-details">
+              <summary>Advanced provider options</summary>
+              <div class="settings-details-body">
+                <button id="addPresetBtn" class="small-btn" type="button">Add Preset</button>
+            <label>
+              Name
+              <input id="providerNameInput" autocomplete="off" />
+            </label>
+            <label>
+              Type
+              <select id="providerTypeInput">
+                <option value="openai">OpenAI-compatible chat completions</option>
+                <option value="gemini">Gemini native API</option>
+              </select>
+            </label>
+            <label>
+              API key
+              <input id="providerKeyInput" type="password" autocomplete="off" placeholder="Stored in session unless vault is saved" />
+            </label>
+            <label class="check-row">
+              <input id="providerNoAuthInput" type="checkbox" />
+              No API key required for this OpenAI-compatible endpoint
+            </label>
+            <label>
+              Extra headers JSON
+              <textarea id="providerHeadersInput" rows="3" spellcheck="false" placeholder='{"HTTP-Referer":"https://example.com"}'></textarea>
+            </label>
+            <div class="button-row">
+              <button id="deleteProviderBtn" class="danger-btn" type="button">Delete</button>
+            </div>
+              </div>
+            </details>
+          </section>
+
+          <details id="vaultSettingsDetails" class="settings-card settings-card-collapsible">
+            <summary>Encrypted Key Vault</summary>
+            <div class="settings-details-body">
+            <label>
+              Passphrase
+              <input id="vaultPassphraseInput" type="password" autocomplete="off" placeholder="Required to unlock or save local keys" />
+            </label>
+            <div class="button-row">
+              <button id="unlockVaultBtn" class="small-btn" type="button">Unlock</button>
+              <button id="saveVaultBtn" class="small-btn" type="button">Save Vault</button>
+              <button id="clearVaultBtn" class="danger-btn" type="button">Clear Vault</button>
+            </div>
+            <p class="hint">Static browser apps cannot hide keys from the browser runtime. Use session-only keys for maximum caution.</p>
+            </div>
+          </details>
+
+          <details id="instructionsSettingsDetails" class="settings-card settings-card-collapsible">
+            <summary>Instructions & Memory</summary>
+            <div class="settings-details-body">
+            <label>
+              System prompt
+              <textarea id="systemPromptInput" rows="5"></textarea>
+            </label>
+            <label>
+              Memory sent with every chat
+              <textarea id="memoryInput" rows="5" placeholder="Stable user preferences, writing style, project facts, constraints."></textarea>
+            </label>
+            <label>
+              Chat context note
+              <textarea id="contextInput" rows="4" placeholder="Optional project-specific context for this chat."></textarea>
+            </label>
+            <div class="button-row">
+              <button id="saveInstructionsBtn" class="primary-btn" type="button">Save Instructions</button>
+              <button id="clearMemoryBtn" class="danger-btn" type="button">Clear Memory</button>
+            </div>
+            </div>
+          </details>
+
+          <details id="promptLibrarySettingsDetails" class="settings-card settings-card-collapsible">
+            <summary>Prompt Library</summary>
+            <div class="settings-details-body">
+            <div class="section-title">
+              <button id="promptNewBtn" class="small-btn" type="button">New</button>
+            </div>
+            <label>
+              Search prompts
+              <input id="promptSearchInput" type="search" placeholder="Name, tag, or content" autocomplete="off" />
+            </label>
+            <label>
+              Saved prompt
+              <select id="promptLibrarySelect" size="6"></select>
+            </label>
+            <div class="control-grid">
+              <label>
+                Name
+                <input id="promptNameInput" autocomplete="off" />
+              </label>
+              <label>
+                Type
+                <select id="promptKindInput">
+                  <option value="prompt">Prompt snippet</option>
+                  <option value="system">System prompt</option>
+                </select>
+              </label>
+            </div>
+            <label>
+              Tags
+              <input id="promptTagsInput" autocomplete="off" placeholder="writing, code, analysis" />
+            </label>
+            <label>
+              Content
+              <textarea id="promptContentInput" rows="7" placeholder="Use {{topic}} style variables when useful."></textarea>
+            </label>
+            <label class="check-row">
+              <input id="promptFavoriteInput" type="checkbox" />
+              Favorite this prompt
+            </label>
+            <div class="button-row">
+              <button id="promptInsertBtn" class="small-btn" type="button">Insert</button>
+              <button id="promptApplySystemBtn" class="small-btn" type="button">Apply System</button>
+              <button id="promptSaveBtn" class="primary-btn" type="button">Save Prompt</button>
+              <button id="promptDeleteBtn" class="danger-btn" type="button">Delete</button>
+            </div>
+            <p class="hint">Type `/` in the composer for quick access. Variables like `{{topic}}` are filled before insertion.</p>
+            </div>
+          </details>
+
+          <details id="generationSettingsDetails" class="settings-card settings-card-collapsible">
+            <summary>Generation Controls</summary>
+            <div class="settings-details-body">
+            <div class="control-grid">
+              <label>
+                Temperature
+                <input id="temperatureInput" type="number" min="0" max="2" step="0.1" />
+              </label>
+              <label>
+                Top P
+                <input id="topPInput" type="number" min="0" max="1" step="0.05" />
+              </label>
+              <label>
+                Max output tokens
+                <input id="maxTokensInput" type="number" min="1" step="1" />
+              </label>
+              <label>
+                Max input tokens
+                <input id="maxInputTokensInput" type="number" min="512" step="256" />
+              </label>
+              <label>
+                Recent turns
+                <input id="recentTurnsInput" type="number" min="1" step="1" />
+              </label>
+              <label>
+                Streaming
+                <select id="streamInput">
+                  <option value="true">On</option>
+                  <option value="false">Off</option>
+                </select>
+              </label>
+            </div>
+            <label class="check-row">
+              <input id="jsonModeInput" type="checkbox" />
+              JSON response mode where supported
+            </label>
+            <label class="check-row">
+              <input id="groundingInput" type="checkbox" />
+              Gemini Google Search grounding
+            </label>
+            <label class="check-row">
+              <input id="autoTrimInput" type="checkbox" />
+              Auto-trim request context to fit budget
+            </label>
+            <label class="check-row">
+              <input id="historyImagesInput" type="checkbox" />
+              Include historical image attachments
+            </label>
+            <label>
+              Extra request body JSON
+              <textarea id="extraBodyInput" rows="5" spellcheck="false" placeholder='{"reasoning_effort":"medium"}'></textarea>
+            </label>
+            <button id="saveControlsBtn" class="primary-btn" type="button">Save Controls</button>
+            </div>
+          </details>
+
+          <details id="workspaceSettingsDetails" class="settings-card settings-card-collapsible">
+            <summary>Workspace Agent</summary>
+            <div class="settings-details-body">
+            <label class="check-row">
+              <input id="workspaceEnableInput" type="checkbox" />
+              Enable opt-in browser workspace mode
+            </label>
+            <p id="workspaceCapability" class="hint"></p>
+            <div class="button-row">
+              <button id="workspaceSelectBtn" class="primary-btn" type="button">Select Folder</button>
+              <button id="workspaceForgetBtn" class="small-btn" type="button">Forget Folder</button>
+            </div>
+            <p id="workspaceStatus" class="status-line" role="status"></p>
+            <label class="check-row">
+              <input id="workspaceShareTraceInput" type="checkbox" />
+              Send visible tool trace snippets with chat
+            </label>
+            <label>
+              File path
+              <input id="workspacePathInput" spellcheck="false" placeholder="src/main.c or build/app.exe" />
+            </label>
+            <label>
+              Search text
+              <input id="workspaceSearchInput" spellcheck="false" placeholder="symbol, error, string, or config key" />
+            </label>
+            <label>
+              Discovered files
+              <select id="workspaceFileSelect" size="6"></select>
+            </label>
+            <div class="button-row">
+              <button id="workspaceListBtn" class="small-btn" type="button">List Files</button>
+              <button id="workspaceSearchBtn" class="small-btn" type="button">Search</button>
+              <button id="workspaceInspectBtn" class="small-btn" type="button">Inspect File</button>
+              <button id="workspaceClearTraceBtn" class="danger-btn" type="button">Clear Trace</button>
+            </div>
+            <label>
+              Trace filter
+              <input id="workspaceTraceFilterInput" spellcheck="false" placeholder="tool, path, status, or snippet" />
+            </label>
+            <div id="workspaceTrace" class="workspace-trace" role="log" aria-live="polite"></div>
+            <p class="hint">Read-only tools run inside this browser tab against the folder you select. ModelTab never gets arbitrary disk access, never writes files, and never uploads raw files unless you attach them yourself.</p>
+            </div>
+          </details>
+
+          <details id="dataSettingsDetails" class="settings-card settings-card-collapsible">
+            <summary>Data</summary>
+            <div class="settings-details-body">
+            <div class="button-row">
+              <button id="exportDataBtn" class="small-btn" type="button">Export Data</button>
+              <button id="exportBackupBtn" class="primary-btn" type="button">Export Full Backup</button>
+              <button id="importDataBtn" class="small-btn" type="button">Import</button>
+              <button id="deleteChatBtn" class="danger-btn" type="button">Delete Chat</button>
+              <button id="wipeDataBtn" class="danger-btn" type="button">Wipe Local Data</button>
+            </div>
+            <p class="hint">Data export excludes API keys. Full backup encrypts current session keys with the vault passphrase before download.</p>
+            <p class="hint">The service worker caches only the app shell. API requests and provider responses are not cached.</p>
+            </div>
+          </details>
+        </div>
+      </aside>
+    </div>
+    <div id="toastRegion" class="toast-region" aria-live="polite" aria-atomic="false"></div>
+
+    <template id="emptyStateTemplate">
+      <div class="empty-state">
+        <h2>Connect a provider and start chatting.</h2>
+        <p>Bring your key, pick your model, and start chatting. Your provider handles inference.</p>
+      </div>
+    </template>
+
+    <script src="./app.js" defer></script>
+  </body>
+</html>

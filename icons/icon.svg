@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="ModelTab icon">
+  <rect width="512" height="512" rx="84" fill="#181917"/>
+  <path d="M150 116h236c25 0 46 21 46 46v214H150c-25 0-46-21-46-46V162c0-25 21-46 46-46z" fill="#2e2d27"/>
+  <path d="M118 154h236c25 0 46 21 46 46v214H118c-25 0-46-21-46-46V200c0-25 21-46 46-46z" fill="#49a686"/>
+  <path d="M154 213h46l56 92 56-92h46v143h-39v-82l-43 70h-32l-43-70v82h-43V213z" fill="#101210"/>
+  <path d="M317 154h37c25 0 46 21 46 46v31h-83v-77z" fill="#d5a84e"/>
+</svg>
