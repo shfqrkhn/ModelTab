@@ -1,0 +1,52 @@
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { join } from "node:path";
+
+const root = fileURLToPath(new URL("..", import.meta.url));
+const read = (path) => readFileSync(join(root, path), "utf8");
+
+const files = {
+  html: read("index.html"),
+  css: read("styles.css"),
+  app: read("app.js"),
+  worker: read("workspace-worker.js"),
+  serviceWorker: read("service-worker.js"),
+  manifest: read("manifest.webmanifest"),
+  readme: read("README.md")
+};
+
+const checks = [];
+
+function check(name, condition) {
+  checks.push({ name, ok: Boolean(condition) });
+}
+
+function includesAll(source, values) {
+  return values.every((value) => source.includes(value));
+}
+
+check("no JS popup APIs in app shell", !/\b(alert|confirm|prompt)\s*\(/.test(`${files.html}\n${files.app}`));
+check("CSP blocks inline and third-party script execution", /Content-Security-Policy/.test(files.html) && /script-src 'self'/.test(files.html) && /object-src 'none'/.test(files.html));
+check("static local mode skips manifest and service worker", includesAll(files.app, ["function attachManifest()", "if (!isHttpLikePage()) return;", "function registerServiceWorker()", "serviceWorker"]));
+check("no horizontal document overflow policy", includesAll(files.css, ["overflow-x: hidden", "minmax(0, 1fr)", ".markdown pre"]));
+check("outer panes collapse and overlay consistently", includesAll(files.css, [".app-shell.sidebar-collapsed", ".app-shell.settings-collapsed", "@media (max-width: 1600px)", "@media (max-width: 980px)", "--pane-transition"]));
+check("compact next actions keep usable target height", !/\.next-actions button\s*\{[^}]*min-height:\s*30px/s.test(files.css));
+check("common cloud provider presets exist", includesAll(files.app, ["OpenRouter", "Groq", "Gemini Native", "OpenAI", "DeepSeek", "MiniMax Global", "Mistral", "Perplexity"]));
+check("common local OpenAI-compatible presets exist", includesAll(files.app, ["LM Studio Local", "Ollama Local", "llama.cpp Local", "vLLM Local", "LocalAI Local", "Text Generation WebUI Local", "Local Network OpenAI Compatible"]));
+check("provider key safety and reserved header guardrails exist", includesAll(files.app, ["delete provider.apiKey", "RESERVED_EXTRA_HEADERS", "authorization", "x-api-key", "sanitizeKeyMap"]));
+check("normal export excludes keys while full backup encrypts them", includesAll(files.app, ["Data exported without API keys", "Full backup exported with encrypted keys", "AES-GCM", "PBKDF2", "keyVault"]));
+check("prompt, memory, and context surfaces exist", includesAll(files.html, ["systemPromptInput", "memoryInput", "contextInput", "promptLibrarySettingsDetails", "promptLibraryBtn"]));
+check("tree chat organization and controls exist", includesAll(files.app, ["normalizeFolders", "renderFolderTree", "data-duplicate-chat", "data-archive-chat", "data-move-chat"]));
+check("workspace agent is explicit, read-only, and trace-visible", includesAll(files.app, ["showDirectoryPicker({ mode: \"read\" })", "Workspace Agent Mode", "workspaceTraceForModel", "no raw file bytes", "workspace.select"]));
+check("workspace worker inspects binaries in a worker with wasm signal", includesAll(files.worker, ["detectFormat", "PE/COFF", "ELF", "Mach-O", "WebAssembly.validate", "hexdump", "sha256"]));
+check("service worker caches only app shell assets", includesAll(files.serviceWorker, ["SHELL", "url.origin !== self.location.origin", "event.request.method !== \"GET\"", "caches.open(CACHE_NAME)"]));
+check("PWA manifest remains minimal and local-first", includesAll(files.manifest, ["\"display\": \"standalone\"", "\"start_url\": \"./\"", "\"scope\": \"./\"", "\"icons\""]));
+check("README documents no-install, BYOK, providers, privacy, local file, and testing", includesAll(files.readme, ["no-install BYOK", "OpenAI-compatible", "Gemini", "Privacy And Data Model", "Local And Static Hosting", "Quality Gates"]));
+
+const failed = checks.filter((item) => !item.ok);
+if (failed.length) {
+  for (const item of failed) console.error(`FAIL ${item.name}`);
+  process.exit(1);
+}
+
+for (const item of checks) console.log(`PASS ${item.name}`);

@@ -62,6 +62,13 @@ AI Studio export cleanup:
 - PWA shell caching is active on HTTP/HTTPS.
 - Local `file://` mode skips manifest and service-worker registration for zip-download reliability.
 
+## Quality Gates
+
+- Static regression gate: `npm test`
+- Responsive visual gate: `npm run test:visual`
+- Local provider smoke gate: `npm run test:provider`
+- Before release, also run syntax checks, a secret scan, README link/media checks, local static smoke, provider setup smoke, and GitHub Pages checks.
+
 ## Relationship To Other Projects
 
 ModelTab is the main AI flagship. `AI-Studio-Cleaner` has been consolidated here to keep AI tooling in one canonical repo. Future AI import, cleanup, and migration workflows should extend this repository instead of creating or reviving separate AI utility repos.
