@@ -1,5 +1,7 @@
 # ModelTab
 
+<p><a href="https://github.com/sponsors/shfqrkhn?o=esb"><strong>Sponsor this project</strong></a></p>
+
 Every model. One tab.
 
 - **Status:** Active flagship
