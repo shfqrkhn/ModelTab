@@ -1791,10 +1791,10 @@ function renderSelfCheck() {
   if (!container) return;
   container.classList.toggle("error", issues.includes("browser is offline"));
   container.classList.toggle("warning", Boolean(issues.length) && !issues.includes("browser is offline"));
-  dom.readinessTitle.textContent = issues.length ? "Setup needs attention" : "Ready";
+  dom.readinessTitle.textContent = issues.length ? "Setup needs attention" : "Setup ready";
   dom.readinessDetail.textContent = issues.length
     ? `Next: ${issues.join(", ")}.${tokenSummary ? ` ${tokenSummary}` : ""}`
-    : `Ready. ${tokenSummary} Chat context goes only to the selected endpoint.`;
+    : `Setup fields are ready. Fetch Models verifies the endpoint. ${tokenSummary ? `${tokenSummary} ` : ""}Chat context goes only to the selected endpoint.`;
   dom.nextActions.innerHTML = renderButtons(
     actions.slice(0, 4).map(([action, label]) => ({ label, attrs: { "data-next-action": action } })),
     "small-btn"
@@ -2545,9 +2545,17 @@ async function fetchModels() {
       ? (data.models || []).map((model) => model.name?.replace(/^models\//, "")).filter(Boolean)
       : (data.data || []).map((model) => model.id).filter(Boolean);
     renderModelSuggestions(provider, models);
-    setStatus(models.length ? `Loaded ${models.length} models.` : "No models returned.");
+    if (!provider.model && models.length) {
+      provider.model = models[0];
+      dom.modelInput.value = provider.model;
+      saveState();
+      renderMeta();
+      renderSelfCheck();
+    }
+    const selected = provider.model && models.includes(provider.model) ? ` Selected ${provider.model}.` : "";
+    setStatus(models.length ? `Connected. Loaded ${models.length} models.${selected}` : "Connected, but no models returned. Enter the model manually.");
   } catch (error) {
-    setStatus(explainFetchError(error), true);
+    setStatus(explainFetchError(error, provider), true);
   }
 }
 
@@ -2977,7 +2985,7 @@ async function runAssistant(chat) {
     if (!assistant.content.trim()) assistant.content = "(No text returned.)";
   } catch (error) {
     assistant.error = true;
-    assistant.content = error.name === "AbortError" ? `${assistant.content}\n\n[Stopped]`.trim() : explainFetchError(error);
+    assistant.content = error.name === "AbortError" ? `${assistant.content}\n\n[Stopped]`.trim() : explainFetchError(error, provider);
   } finally {
     activeRequest = null;
     chat.updatedAt = new Date().toISOString();
@@ -3411,10 +3419,10 @@ function requireSecondClick(key, message, action) {
   setStatus(message, true);
 }
 
-function explainFetchError(error) {
+function explainFetchError(error, provider = activeProvider()) {
   const raw = String(error?.message || error || "Unknown error");
   if (error?.name === "TypeError" || raw.includes("Failed to fetch")) {
-    return "Network or CORS failure. Some providers do not allow direct browser calls from static sites. For LM Studio, start the server with CORS enabled, for example: lms server start --cors --port 1234.";
+    return localConnectionHelp(provider);
   }
   try {
     const parsed = JSON.parse(raw);
@@ -3422,6 +3430,22 @@ function explainFetchError(error) {
   } catch {
     return compact(raw, 2000);
   }
+}
+
+function localConnectionHelp(provider) {
+  const preset = presetForProvider(provider);
+  const id = preset?.id || provider?.presetId || "";
+  const baseUrl = provider?.baseUrl ? ` Base URL: ${provider.baseUrl}.` : "";
+  if (id === "lm-studio") {
+    return `Network or CORS failure. For LM Studio, start the local server with CORS enabled: lms server start --cors --port 1234.${baseUrl}`;
+  }
+  if (id === "ollama") {
+    return `Network or CORS failure. For Ollama, confirm Ollama is running, its OpenAI-compatible endpoint is reachable, and browser/CORS access is allowed.${baseUrl}`;
+  }
+  if (preset?.category === "Local" || endpointLikelyLocalNoAuth(provider?.baseUrl)) {
+    return `Network or CORS failure. Confirm the local/LAN server is running, reachable from this browser, and allows this page origin.${baseUrl}`;
+  }
+  return "Network or CORS failure. Some cloud providers do not allow direct browser calls from static sites; use a browser-compatible endpoint or a local endpoint you control.";
 }
 
 function regenerateFrom(index) {

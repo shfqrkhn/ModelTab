@@ -136,6 +136,90 @@ test("local OpenAI-compatible provider can fetch models and complete a chat", as
   await expect(page.locator(".message.assistant .markdown")).toContainText("smoke-ok");
 });
 
+test("model fetch confirms connection and selects first missing model", async ({ page }) => {
+  await page.addInitScript(({ providerUrl }) => {
+    localStorage.setItem("modeltab-state-v1", JSON.stringify({
+      activeProviderId: "custom-provider",
+      providers: [{
+        id: "custom-provider",
+        name: "Custom Provider",
+        type: "openai",
+        baseUrl: providerUrl,
+        model: "",
+        extraHeaders: "",
+        noAuth: true
+      }],
+      settings: {
+        stream: false,
+        autoTrim: true,
+        recentTurns: 3,
+        maxInputTokens: 6000,
+        maxTokens: 256,
+        temperature: 0.2,
+        topP: 1
+      },
+      conversations: [{
+        id: "chat-custom",
+        title: "Custom provider",
+        context: "",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        messages: []
+      }],
+      activeConversationId: "chat-custom"
+    }));
+  }, { providerUrl });
+
+  await page.goto(appUrl);
+  await page.getByRole("button", { name: "Settings" }).click();
+  await expect(page.locator("#readinessDetail")).toContainText("model missing");
+  await page.locator("#fetchModelsBtn").click();
+  await expect(page.locator("#providerStatus")).toContainText("Connected. Loaded 1 models. Selected smoke-model.");
+  await expect(page.locator("#modelInput")).toHaveValue("smoke-model");
+  await expect(page.locator("#readinessTitle")).toContainText("Setup ready");
+});
+
+test("Ollama model fetch failures show provider-specific browser diagnostics", async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem("modeltab-state-v1", JSON.stringify({
+      activeProviderId: "ollama-failed",
+      providers: [{
+        id: "ollama-failed",
+        name: "Ollama Local",
+        type: "openai",
+        baseUrl: "http://127.0.0.1:1/v1",
+        model: "llama3.2",
+        extraHeaders: "",
+        noAuth: true,
+        presetId: "ollama"
+      }],
+      settings: {
+        stream: false,
+        autoTrim: true,
+        recentTurns: 3,
+        maxInputTokens: 6000,
+        maxTokens: 256,
+        temperature: 0.2,
+        topP: 1
+      },
+      conversations: [{
+        id: "chat-ollama",
+        title: "Ollama diagnostics",
+        context: "",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        messages: []
+      }],
+      activeConversationId: "chat-ollama"
+    }));
+  });
+  await page.goto(appUrl);
+  await page.getByRole("button", { name: "Settings" }).click();
+  await page.locator("#fetchModelsBtn").click();
+  await expect(page.locator("#providerStatus")).toContainText("For Ollama");
+  await expect(page.locator("#providerStatus")).toContainText("browser/CORS access");
+});
+
 test("corrupt or hostile local state fails closed into a usable default app", async ({ page }) => {
   await page.addInitScript(() => {
     localStorage.setItem("modeltab-state-v1", "{\"__proto__\":{\"polluted\":true},\"providers\":[],\"conversations\":[]}");

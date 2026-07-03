@@ -157,7 +157,7 @@ test("first-run onboarding opens key field and offers no-key local setup", async
   await expect(page.locator("#settingsPanel")).toHaveClass(/open/);
   await expect(page.locator("#providerBaseInput")).toHaveValue("http://localhost:1234/v1");
   await expect(page.locator("#chatMeta")).toContainText("LM Studio Local");
-  await expect(page.locator("#readinessTitle")).toContainText("Ready");
+  await expect(page.locator("#readinessTitle")).toContainText("Setup ready");
   await expect(page.locator("#readinessDetail")).not.toContainText("API key missing");
   await expect(page.locator("#nextActions")).toContainText("Fetch Models");
 });
