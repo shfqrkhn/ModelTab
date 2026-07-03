@@ -1884,7 +1884,7 @@ async function selectWorkspaceFolder() {
     const handle = await window.showDirectoryPicker({ mode: "read" });
     workspaceDirectoryHandle = handle;
     state.workspace.enabled = true;
-    state.workspace.folderName = handle.name || "selected folder";
+    resetWorkspaceSession(handle.name || "selected folder");
     addWorkspaceTrace("workspace.select", state.workspace.folderName, "Folder selected. Read-only tools are available for this session.");
     saveState();
     renderAll();
@@ -1903,6 +1903,20 @@ function forgetWorkspaceFolder() {
   saveState();
   renderAll();
   setStatus("Workspace folder forgotten.");
+}
+
+function resetWorkspaceSession(folderName) {
+  state.workspace.folderName = folderName;
+  state.workspace.trace = [];
+  clearWorkspaceRuntimeInputs();
+}
+
+function clearWorkspaceRuntimeInputs() {
+  workspaceFileEntries = [];
+  workspaceTraceFilter = "";
+  dom.workspaceTraceFilterInput.value = "";
+  dom.workspacePathInput.value = "";
+  dom.workspaceSearchInput.value = "";
 }
 
 function clearWorkspaceTrace() {
@@ -2019,7 +2033,7 @@ async function ensureWorkspaceReadPermission({ prompt = false } = {}) {
 
 function disconnectWorkspaceHandle() {
   workspaceDirectoryHandle = null;
-  workspaceFileEntries = [];
+  clearWorkspaceRuntimeInputs();
 }
 
 async function listWorkspaceFiles() {
@@ -2238,6 +2252,8 @@ function getWorkspaceWorker() {
   workspaceWorker.addEventListener("error", (event) => {
     for (const job of workspaceWorkerJobs.values()) job.reject(new Error(event.message || "Workspace worker failed."));
     workspaceWorkerJobs.clear();
+    workspaceWorker?.terminate?.();
+    workspaceWorker = null;
   });
   return workspaceWorker;
 }
@@ -3304,7 +3320,7 @@ function workspaceTraceForModel() {
     .slice(-WORKSPACE_MODEL_TRACE_LIMIT)
     .map((entry) => `${entry.tool} ${entry.ok ? "OK" : "FAILED"}\ninput: ${entry.input || "(none)"}\noutput:\n${entry.output}`)
     .join("\n\n");
-  return `Workspace Agent Mode trace from selected folder "${state.workspace.folderName || workspaceRootLabel()}". Only visible successful read-only tool outputs/snippets are included; no raw file bytes, directory handles, hidden writes, or silent file uploads are included.\n\n${compactWorkspaceTraceForModel(traces, 6000)}`;
+  return `Workspace Agent Mode trace from selected folder "${state.workspace.folderName || workspaceRootLabel()}". Only visible successful read-only tool outputs/summaries are included; no full files, directory handles, hidden writes, or silent file uploads are included.\n\n${compactWorkspaceTraceForModel(traces, 6000)}`;
 }
 
 function workspaceModelTraceEntries() {
@@ -3739,6 +3755,7 @@ function wipeLocalData() {
     state = normalizeState(structuredClone(DEFAULT_STATE));
     sessionKeys = {};
     draftAttachments = [];
+    disconnectWorkspaceHandle();
     saveState();
     renderAll();
     setStatus("Local data wiped.");
@@ -3834,6 +3851,7 @@ async function importData() {
     });
     state = nextState;
     sessionKeys = {};
+    disconnectWorkspaceHandle();
     if (keyVault) {
       try {
         localStorage.setItem(VAULT_KEY, JSON.stringify(keyVault));

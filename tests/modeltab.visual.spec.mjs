@@ -214,6 +214,51 @@ test("seeded desktop chat uses compact composer controls", async ({ page }) => {
   expect(audit.messageListHeight).toBeGreaterThanOrEqual(480);
 });
 
+test("workspace settings drawer stays usable on short phones", async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 568 });
+  await page.goto(baseUrl);
+  await page.getByRole("button", { name: "Settings" }).click();
+  await expect(page.locator("#settingsPanel")).toHaveClass(/open/);
+  await expect.poll(async () => page.evaluate(() => {
+    const box = document.querySelector("#settingsPanel")?.getBoundingClientRect();
+    return Boolean(box && box.left >= -1 && box.right <= window.innerWidth + 1);
+  })).toBe(true);
+  await page.locator("#workspaceSettingsDetails").evaluate((details) => {
+    details.open = true;
+    details.scrollIntoView({ block: "nearest" });
+  });
+
+  const audit = await page.evaluate(() => ({
+    overflowX: Math.max(
+      0,
+      document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      document.body.scrollWidth - document.body.clientWidth
+    ),
+    traceWidth: document.querySelector("#workspaceTrace")?.getBoundingClientRect().width || 0,
+    offscreenVisible: [...document.querySelectorAll("body *")]
+      .filter((element) => {
+        if (element.closest('.sidebar[aria-hidden="true"]')) return false;
+        const style = getComputedStyle(element);
+        if (style.display === "none" || style.visibility === "hidden" || Number(style.opacity) === 0) return false;
+        const box = element.getBoundingClientRect();
+        return box.width > 0 && box.height > 0 && (box.left < -1 || box.right > window.innerWidth + 1);
+      })
+      .map((element) => element.id || element.tagName.toLowerCase()),
+    undersizedButtons: [...document.querySelectorAll("#settingsPanel button")]
+      .filter((button) => {
+        const box = button.getBoundingClientRect();
+        const style = getComputedStyle(button);
+        return style.display !== "none" && style.visibility !== "hidden" && box.width > 0 && box.height > 0 && box.height < 32;
+      })
+      .map((button) => button.id || button.textContent.trim())
+  }));
+
+  expect(audit.overflowX).toBe(0);
+  expect(audit.offscreenVisible).toEqual([]);
+  expect(audit.undersizedButtons).toEqual([]);
+  expect(audit.traceWidth).toBeGreaterThan(200);
+});
+
 test("mobile drawer and prompt-library affordances are reachable", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(baseUrl);

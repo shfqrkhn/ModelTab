@@ -193,6 +193,137 @@ test("workspace intent fails closed when only stale persisted trace exists", asy
   expect(providerRequests.filter((item) => item.kind === "openai")).toHaveLength(0);
 });
 
+test("workspace import resets live folder handles before stale trace can be used", async ({ page }) => {
+  providerRequests.length = 0;
+  await page.addInitScript(({ providerUrl }) => {
+    const liveFile = new File(["LIVE_FOLDER_TOKEN\n"], "live.txt", { type: "text/plain" });
+    const liveDirectory = {
+      kind: "directory",
+      name: "live-folder",
+      queryPermission: async () => "granted",
+      requestPermission: async () => "granted",
+      entries: async function* entries() {
+        yield ["live.txt", { kind: "file", name: "live.txt", getFile: async () => liveFile }];
+      },
+      getFileHandle: async (name) => {
+        if (name !== "live.txt") throw new Error("not found");
+        return { kind: "file", name: "live.txt", getFile: async () => liveFile };
+      },
+      getDirectoryHandle: async () => {
+        throw new Error("not found");
+      }
+    };
+    window.showDirectoryPicker = async () => liveDirectory;
+    localStorage.setItem("modeltab-state-v1", JSON.stringify({
+      activeProviderId: "workspace-provider",
+      providers: [{
+        id: "workspace-provider",
+        name: "Workspace Provider",
+        type: "openai",
+        baseUrl: providerUrl,
+        model: "smoke-model",
+        extraHeaders: "",
+        noAuth: true
+      }],
+      workspace: {
+        enabled: true,
+        shareTrace: true,
+        folderName: "",
+        trace: []
+      },
+      settings: {
+        stream: false,
+        autoTrim: true,
+        recentTurns: 3,
+        maxInputTokens: 6000,
+        maxTokens: 256,
+        temperature: 0.2,
+        topP: 1
+      },
+      conversations: [{
+        id: "chat-workspace-import",
+        title: "Workspace import",
+        context: "",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        messages: []
+      }],
+      activeConversationId: "chat-workspace-import"
+    }));
+  }, { providerUrl });
+
+  await page.goto(appUrl);
+  await page.getByRole("button", { name: "Settings" }).click();
+  await page.locator("#workspaceSettingsDetails").evaluate((details) => { details.open = true; });
+  await page.locator("#workspaceSelectBtn").click();
+  await expect(page.locator("#workspaceStatus")).toContainText("Connected read-only folder");
+
+  const importStatus = await page.evaluate(async ({ providerUrl }) => {
+    const imported = {
+      app: "modeltab",
+      kind: "data",
+      formatVersion: 2,
+      state: {
+        activeProviderId: "workspace-provider",
+        providers: [{
+          id: "workspace-provider",
+          name: "Workspace Provider",
+          type: "openai",
+          baseUrl: providerUrl,
+          model: "smoke-model",
+          extraHeaders: "",
+          noAuth: true
+        }],
+        workspace: {
+          enabled: true,
+          shareTrace: true,
+          folderName: "imported-folder",
+          trace: [{
+            id: "imported-trace",
+            createdAt: new Date().toISOString(),
+            tool: "workspace.list",
+            input: "imported-folder",
+            output: "file IMPORTED_STALE_TOKEN.txt",
+            ok: true
+          }]
+        },
+        settings: {
+          stream: false,
+          autoTrim: true,
+          recentTurns: 3,
+          maxInputTokens: 6000,
+          maxTokens: 256,
+          temperature: 0.2,
+          topP: 1
+        },
+        conversations: [{
+          id: "imported-workspace-chat",
+          title: "Imported Workspace",
+          context: "",
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          messages: []
+        }],
+        activeConversationId: "imported-workspace-chat"
+      }
+    };
+    const text = JSON.stringify(imported);
+    Object.defineProperty(document.querySelector("#importInput"), "files", {
+      configurable: true,
+      value: [{ size: text.length, text: async () => text }]
+    });
+    await importData();
+    return document.querySelector("#workspaceStatus").textContent;
+  }, { providerUrl });
+
+  expect(importStatus).toContain("remembered by name only");
+  await page.keyboard.press("Escape");
+  await page.getByPlaceholder("Ask anything. Shift+Enter for a new line.").fill("List files in my local workspace.");
+  await page.getByRole("button", { name: "Send" }).click();
+  await expect(page.locator(".message.assistant.error .markdown")).toContainText("no live workspace folder");
+  expect(providerRequests.filter((item) => item.kind === "openai")).toHaveLength(0);
+});
+
 test("workspace trace reaches provider only after live verified tool output", async ({ page }) => {
   providerRequests.length = 0;
   await page.addInitScript(({ providerUrl }) => {
@@ -289,6 +420,121 @@ test("workspace trace reaches provider only after live verified tool output", as
   expect(serialized).toContain("README.md");
   expect(serialized).toContain("PE/COFF executable");
   expect(serialized).not.toContain("workspace.select");
+});
+
+test("workspace folder reselection clears stale trace before provider context", async ({ page }) => {
+  providerRequests.length = 0;
+  await page.addInitScript(({ providerUrl }) => {
+    const folderAFile = new File(["A_ONLY_TOKEN\n"], "a.txt", { type: "text/plain" });
+    const folderBFile = new File(["B_ONLY_TOKEN\n"], "b.txt", { type: "text/plain" });
+    const fileHandle = (file) => ({
+      kind: "file",
+      name: file.name,
+      getFile: async () => file
+    });
+    const folderA = {
+      kind: "directory",
+      name: "folder-a",
+      queryPermission: async () => "granted",
+      requestPermission: async () => "granted",
+      entries: async function* entries() {
+        yield ["a.txt", fileHandle(folderAFile)];
+      },
+      getFileHandle: async (name) => {
+        if (name !== "a.txt") throw new Error("not found");
+        return fileHandle(folderAFile);
+      },
+      getDirectoryHandle: async () => {
+        throw new Error("not found");
+      }
+    };
+    const folderB = {
+      kind: "directory",
+      name: "folder-b",
+      queryPermission: async () => "granted",
+      requestPermission: async () => "granted",
+      entries: async function* entries() {
+        yield ["b.txt", fileHandle(folderBFile)];
+      },
+      getFileHandle: async (name) => {
+        if (name !== "b.txt") throw new Error("not found");
+        return fileHandle(folderBFile);
+      },
+      getDirectoryHandle: async () => {
+        throw new Error("not found");
+      }
+    };
+    let nextFolder = folderA;
+    window.__selectFolderB = () => { nextFolder = folderB; };
+    window.showDirectoryPicker = async () => nextFolder;
+    localStorage.setItem("modeltab-state-v1", JSON.stringify({
+      activeProviderId: "workspace-provider",
+      providers: [{
+        id: "workspace-provider",
+        name: "Workspace Provider",
+        type: "openai",
+        baseUrl: providerUrl,
+        model: "smoke-model",
+        extraHeaders: "",
+        noAuth: true
+      }],
+      workspace: {
+        enabled: true,
+        shareTrace: true,
+        folderName: "",
+        trace: []
+      },
+      settings: {
+        stream: false,
+        autoTrim: true,
+        recentTurns: 3,
+        maxInputTokens: 6000,
+        maxTokens: 256,
+        temperature: 0.2,
+        topP: 1
+      },
+      conversations: [{
+        id: "chat-workspace-reselect",
+        title: "Workspace reselect",
+        context: "",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        messages: []
+      }],
+      activeConversationId: "chat-workspace-reselect"
+    }));
+  }, { providerUrl });
+
+  await page.goto(appUrl);
+  await page.getByRole("button", { name: "Settings" }).click();
+  await page.locator("#workspaceSettingsDetails").evaluate((details) => { details.open = true; });
+  await page.locator("#workspaceSelectBtn").click();
+  await page.locator("#workspaceListBtn").click();
+  await expect(page.locator("#workspaceTrace")).toContainText("a.txt");
+  await page.locator("#workspacePathInput").fill("a.txt");
+  await page.locator("#workspaceSearchInput").fill("A_ONLY_TOKEN");
+
+  await page.evaluate(() => window.__selectFolderB());
+  await page.locator("#workspaceSelectBtn").click();
+  await expect(page.locator("#workspaceTrace")).not.toContainText("a.txt");
+  await expect(page.locator("#workspacePathInput")).toHaveValue("");
+  await expect(page.locator("#workspaceSearchInput")).toHaveValue("");
+  await page.locator("#workspaceListBtn").click();
+  await expect(page.locator("#workspaceTrace")).toContainText("b.txt");
+  await expect(page.locator("#workspaceTrace")).not.toContainText("A_ONLY_TOKEN");
+  await page.keyboard.press("Escape");
+
+  await page.getByPlaceholder("Ask anything. Shift+Enter for a new line.").fill("Use the selected workspace trace to summarize files.");
+  await page.getByRole("button", { name: "Send" }).click();
+  await expect(page.locator(".message.assistant .markdown")).toContainText("smoke-ok");
+
+  const body = providerRequests.filter((item) => item.kind === "openai").at(-1).body;
+  const serialized = JSON.stringify(body);
+  expect(serialized).toContain("folder-b");
+  expect(serialized).toContain("b.txt");
+  expect(serialized).not.toContain("folder-a");
+  expect(serialized).not.toContain("a.txt");
+  expect(serialized).not.toContain("A_ONLY_TOKEN");
 });
 
 test("workspace unsupported browser state is explicit and non-blocking", async ({ page }) => {
