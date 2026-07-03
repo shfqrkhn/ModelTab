@@ -6,6 +6,7 @@ Every model. One tab.
 
 - **Status:** Active flagship
 - **Live Demo:** [shfqrkhn.github.io/ModelTab](https://shfqrkhn.github.io/ModelTab/)
+- **Latest Release:** [v0.1.0](https://github.com/shfqrkhn/ModelTab/releases/latest)
 - **Bundled Tool:** [AI Studio Cleaner](https://shfqrkhn.github.io/ModelTab/tools/ai-studio-cleaner/)
 - **Portfolio Role:** Primary AI application.
 - **License:** MIT
@@ -33,7 +34,7 @@ Many AI chat tools require a desktop install, a hosted account, or a single prov
 
 ## Quick Start
 
-1. Open the live demo, self-host the static files, or download the repository zip and open `index.html`.
+1. Open the live demo, self-host the static files, or download the latest release zip and open `index.html`.
 2. Pick a preset for an OpenAI-compatible cloud endpoint, native Gemini, or a local/LAN server.
 3. Enter base URL, model, and API key only if the endpoint requires one. Direct browser calls require the selected endpoint to allow browser CORS requests; some cloud providers block static-site browser calls.
 4. For LM Studio browser use, start the local server with CORS enabled:
@@ -43,6 +44,12 @@ Many AI chat tools require a desktop install, a hosted account, or a single prov
    ```
 
 5. Chat, save prompts, organize conversations, install the PWA on HTTPS/localhost when useful, and export or back up local data.
+
+## Release And Download
+
+- Web/PWA: use the live demo and your browser's install action.
+- Local ZIP: download the [latest release](https://github.com/shfqrkhn/ModelTab/releases/latest), extract it, and open `index.html`.
+- Self-host: serve this repository root from any static host. No backend or build step is required.
 
 AI Studio export cleanup:
 

@@ -65,10 +65,12 @@ check("README exposes Sponsor, live demo, bundled cleaner, and license", [
   "https://github.com/sponsors/shfqrkhn?o=esb",
   "https://shfqrkhn.github.io/ModelTab/",
   "https://shfqrkhn.github.io/ModelTab/tools/ai-studio-cleaner/",
+  "https://github.com/shfqrkhn/ModelTab/releases/latest",
   "MIT"
 ].every((needle) => read("README.md").includes(needle)));
-check("README covers local zip, PWA install, CORS, and local/LAN setup paths", [
-  "download the repository zip",
+check("README covers release zip, local zip, PWA install, CORS, and local/LAN setup paths", [
+  "Release And Download",
+  "download the latest release zip",
   "open `index.html`",
   "Direct browser calls require",
   "local/LAN server",

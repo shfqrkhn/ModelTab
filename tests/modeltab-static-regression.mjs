@@ -54,8 +54,8 @@ check("PWA manifest remains local-first with richer install metadata",
   ["productivity", "utilities", "developer"].every((category) => manifest.categories?.includes(category)) &&
   ["./icons/icon.svg", "./icons/icon-192.png", "./icons/icon-512.png"].every((src) => manifest.icons?.some((icon) => icon.src === src)) &&
   manifest.screenshots?.some((screenshot) => screenshot.src === "./screenshot.png" && screenshot.sizes === "1440x1000"));
-check("README documents no-install, BYOK, providers, CORS, local file, PWA install, privacy, and testing", includesAll(files.readme, ["no-install", "local-first BYOK", "OpenAI-compatible", "Gemini", "Direct browser calls require", "install the PWA", "Privacy And Data Model", "Local And Static Hosting", "Quality Gates"]));
-check("adoption surfaces include sponsor, bundled cleaner, screenshot, and MIT license", includesAll(`${files.html}\n${files.readme}`, ["https://github.com/sponsors/shfqrkhn?o=esb", "tools/ai-studio-cleaner", "screenshot.png", "MIT"]) && includesAll(files.license, ["MIT License", "Permission is hereby granted"]));
+check("README documents no-install, BYOK, providers, CORS, local file, PWA install, release download, privacy, and testing", includesAll(files.readme, ["no-install", "local-first BYOK", "OpenAI-compatible", "Gemini", "Direct browser calls require", "install the PWA", "Release And Download", "latest release zip", "Privacy And Data Model", "Local And Static Hosting", "Quality Gates"]));
+check("adoption surfaces include sponsor, release, bundled cleaner, screenshot, and MIT license", includesAll(`${files.html}\n${files.readme}`, ["https://github.com/sponsors/shfqrkhn?o=esb", "https://github.com/shfqrkhn/ModelTab/releases/latest", "tools/ai-studio-cleaner", "screenshot.png", "MIT"]) && includesAll(files.license, ["MIT License", "Permission is hereby granted"]));
 
 const failed = checks.filter((item) => !item.ok);
 if (failed.length) {
