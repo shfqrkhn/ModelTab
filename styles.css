@@ -918,7 +918,7 @@ select:focus {
 
 .composer {
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 10px;
   align-items: end;
 }
@@ -1595,6 +1595,58 @@ select:focus {
 
   .next-actions button {
     flex: 1 1 110px;
+  }
+}
+
+@media (max-width: 820px) {
+  .readiness > div:first-child {
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+  }
+
+  .readiness strong,
+  .readiness p {
+    display: block;
+  }
+
+  .readiness p {
+    margin: 3px 0 0;
+  }
+}
+
+@media (max-width: 420px) {
+  .notice,
+  .readiness p {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+  }
+
+  .notice {
+    -webkit-line-clamp: 2;
+  }
+
+  .readiness p {
+    -webkit-line-clamp: 2;
+  }
+
+  .composer {
+    grid-template-columns: 1fr;
+  }
+
+  .composer-actions {
+    justify-content: stretch;
+  }
+
+  .composer-actions .send-btn {
+    flex: 1 1 auto;
+  }
+
+  #promptInput {
+    height: 54px;
+    min-height: 54px;
+    max-height: 18vh;
   }
 }
 

@@ -7,6 +7,41 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 const root = fileURLToPath(new URL("..", import.meta.url));
 let server;
 let baseUrl;
+const seededAuditState = {
+  activeConversationId: "chat-audit",
+  activeProviderId: "local-audit",
+  sidebarCollapsed: false,
+  settingsCollapsed: false,
+  providers: [{
+    id: "local-audit",
+    name: "LM Studio Local",
+    type: "openai",
+    baseUrl: "http://localhost:1234/v1",
+    model: "local-model",
+    extraHeaders: "",
+    noAuth: true,
+    presetId: "lm-studio"
+  }],
+  conversations: [{
+    id: "chat-audit",
+    title: "Explain this step by step for a technical but busy reader",
+    context: "",
+    folderId: "",
+    archivedAt: "",
+    createdAt: "2026-07-03T00:00:00.000Z",
+    updatedAt: "2026-07-03T00:00:00.000Z",
+    messages: Array.from({ length: 12 }, (_, index) => ({
+      id: `msg-${index}`,
+      role: index % 2 ? "assistant" : "user",
+      content: index % 2
+        ? "A compact answer with a deliberately long token C:/workspace/project/really/really/long/path/that/must/wrap plus practical next steps."
+        : "Explain the current result and next action for a technical but busy reader.",
+      attachments: [],
+      error: false,
+      createdAt: "2026-07-03T00:00:00.000Z"
+    }))
+  }]
+};
 
 const mime = new Map([
   [".css", "text/css"],
@@ -119,6 +154,65 @@ for (const viewport of [
     if (viewport.width < 1600) expect(audit.settingsHidden).toBe(true);
   });
 }
+
+test("seeded long chat keeps a usable composer and chat-first viewport on short phones", async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 568 });
+  await page.addInitScript((state) => localStorage.setItem("modeltab-state-v1", JSON.stringify(state)), seededAuditState);
+  await page.goto(baseUrl);
+  await expect(page.locator(".workspace")).toBeVisible();
+
+  const audit = await page.evaluate(() => {
+    const rect = (selector) => {
+      const box = document.querySelector(selector)?.getBoundingClientRect();
+      return box ? { width: box.width, height: box.height } : null;
+    };
+    return {
+      overflowX: Math.max(
+        0,
+        document.documentElement.scrollWidth - document.documentElement.clientWidth,
+        document.body.scrollWidth - document.body.clientWidth
+      ),
+      prompt: rect("#promptInput"),
+      messageList: rect("#messageList"),
+      composer: rect(".composer-panel"),
+      offscreenVisible: [...document.querySelectorAll("body *")]
+        .filter((element) => {
+          if (element.closest('.sidebar[aria-hidden="true"], .settings-panel[aria-hidden="true"]')) return false;
+          const style = getComputedStyle(element);
+          if (style.display === "none" || style.visibility === "hidden" || Number(style.opacity) === 0) return false;
+          const box = element.getBoundingClientRect();
+          return box.width > 0 && box.height > 0 && (box.left < -1 || box.right > window.innerWidth + 1);
+        })
+        .map((element) => element.id || element.tagName.toLowerCase())
+    };
+  });
+
+  expect(audit.overflowX).toBe(0);
+  expect(audit.offscreenVisible).toEqual([]);
+  expect(audit.prompt?.width).toBeGreaterThanOrEqual(280);
+  expect(audit.messageList?.height).toBeGreaterThanOrEqual(170);
+  expect(audit.composer?.height).toBeLessThanOrEqual(150);
+});
+
+test("seeded desktop chat uses compact composer controls", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.addInitScript((state) => localStorage.setItem("modeltab-state-v1", JSON.stringify(state)), seededAuditState);
+  await page.goto(baseUrl);
+
+  const audit = await page.evaluate(() => ({
+    overflowX: Math.max(
+      0,
+      document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      document.body.scrollWidth - document.body.clientWidth
+    ),
+    composerHeight: document.querySelector(".composer-panel")?.getBoundingClientRect().height || 0,
+    messageListHeight: document.querySelector("#messageList")?.getBoundingClientRect().height || 0
+  }));
+
+  expect(audit.overflowX).toBe(0);
+  expect(audit.composerHeight).toBeLessThanOrEqual(170);
+  expect(audit.messageListHeight).toBeGreaterThanOrEqual(480);
+});
 
 test("mobile drawer and prompt-library affordances are reachable", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
