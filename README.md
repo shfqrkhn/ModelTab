@@ -8,6 +8,7 @@ Every model. One tab.
 - **Live Demo:** [shfqrkhn.github.io/ModelTab](https://shfqrkhn.github.io/ModelTab/)
 - **Bundled Tool:** [AI Studio Cleaner](https://shfqrkhn.github.io/ModelTab/tools/ai-studio-cleaner/)
 - **Portfolio Role:** Primary AI application.
+- **License:** MIT
 
 ModelTab is a no-install BYOK AI chat PWA for OpenAI-compatible endpoints and native Gemini API keys. It gives users a browser-based alternative to desktop AI chat tools: bring an endpoint, bring a key, and use the provider directly.
 
@@ -100,4 +101,4 @@ Keep the release tree minimal: only files needed to run the app, bundled tools, 
 
 ## License
 
-See `LICENSE` if present in this repository.
+MIT. See `LICENSE`.

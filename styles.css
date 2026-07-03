@@ -246,12 +246,17 @@ summary:focus-visible {
   padding: 0 14px 14px;
 }
 
-.sponsor-link {
+.resource-links {
+  display: grid;
+  gap: 8px;
+  margin: 0 14px 14px;
+}
+
+.side-link {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   min-height: 36px;
-  margin: 0 14px 14px;
   padding: 0 12px;
   border: 1px solid rgb(213 168 78 / 35%);
   border-radius: 12px;
@@ -262,7 +267,7 @@ summary:focus-visible {
   text-decoration: none;
 }
 
-.sponsor-link:hover {
+.side-link:hover {
   background: rgb(213 168 78 / 18%);
 }
 

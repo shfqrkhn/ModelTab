@@ -12,7 +12,8 @@ const files = {
   worker: read("workspace-worker.js"),
   serviceWorker: read("service-worker.js"),
   manifest: read("manifest.webmanifest"),
-  readme: read("README.md")
+  readme: read("README.md"),
+  license: read("LICENSE")
 };
 
 const checks = [];
@@ -43,6 +44,7 @@ check("workspace worker inspects binaries in a worker with wasm signal", include
 check("service worker caches only app shell assets", includesAll(files.serviceWorker, ["SHELL", "url.origin !== self.location.origin", "event.request.method !== \"GET\"", "caches.open(CACHE_NAME)"]));
 check("PWA manifest remains minimal and local-first", includesAll(files.manifest, ["\"display\": \"standalone\"", "\"start_url\": \"./\"", "\"scope\": \"./\"", "\"icons\""]));
 check("README documents no-install, BYOK, providers, privacy, local file, and testing", includesAll(files.readme, ["no-install BYOK", "OpenAI-compatible", "Gemini", "Privacy And Data Model", "Local And Static Hosting", "Quality Gates"]));
+check("adoption surfaces include sponsor, bundled cleaner, screenshot, and MIT license", includesAll(`${files.html}\n${files.readme}`, ["https://github.com/sponsors/shfqrkhn?o=esb", "tools/ai-studio-cleaner", "screenshot.png", "MIT"]) && includesAll(files.license, ["MIT License", "Permission is hereby granted"]));
 
 const failed = checks.filter((item) => !item.ok);
 if (failed.length) {
