@@ -1,4 +1,4 @@
-const CACHE_NAME = "modeltab-shell-v38";
+const CACHE_NAME = "modeltab-shell-v39";
 const SHELL = [
   "./",
   "./index.html",

@@ -31,6 +31,7 @@ check("no JS popup APIs in app shell", !/\b(alert|confirm|prompt)\s*\(/.test(`${
 check("CSP blocks inline and third-party script execution", /Content-Security-Policy/.test(files.html) && /script-src 'self'/.test(files.html) && /object-src 'none'/.test(files.html));
 check("static local mode skips manifest and service worker", includesAll(files.app, ["function attachManifest()", "if (!isHttpLikePage()) return;", "function registerServiceWorker()", "serviceWorker"]));
 check("local-file smoke gate exists", files.readme.includes("npm run test:local-file") && read("tests/modeltab.local-file-smoke.mjs").includes("local-file contract smoke"));
+check("runtime notice preserves direct-provider and opt-in workspace contracts", includesAll(files.html, ["AI inference runs on the selected provider endpoint", "Direct chat stores local settings/history and sends only chat", "Optional Workspace Agent Mode can inspect a user-selected folder locally", "explicitly enable trace sharing"]));
 check("no horizontal document overflow policy", includesAll(files.css, ["overflow-x: hidden", "minmax(0, 1fr)", ".markdown pre"]));
 check("outer panes collapse and overlay consistently", includesAll(files.css, [".app-shell.sidebar-collapsed", ".app-shell.settings-collapsed", "@media (max-width: 1600px)", "@media (max-width: 980px)", "--pane-transition"]));
 check("compact next actions keep usable target height", !/\.next-actions button\s*\{[^}]*min-height:\s*30px/s.test(files.css));
@@ -45,7 +46,7 @@ check("primary interaction feedback and composer labeling exist", includesAll(`$
 check("tree chat organization and controls exist", includesAll(files.app, ["normalizeFolders", "renderFolderTree", "data-duplicate-chat", "data-archive-chat", "data-move-chat"]));
 check("workspace agent is explicit, read-only, trace-visible, and fail-closed", includesAll(files.app, ["showDirectoryPicker({ mode: \"read\" })", "Workspace Agent Mode", "workspaceTraceForModel", "WORKSPACE_ALLOWED_TOOLS", "Workspace Agent Mode will not guess", "no full files", "workspace.select", "resetWorkspaceSession", "disconnectWorkspaceHandle"]));
 check("workspace worker inspects binaries in a worker with wasm signal", includesAll(files.worker, ["detectFormat", "PE/COFF", "ELF", "Mach-O", "WebAssembly.validate", "hexdump", "sha256"]));
-check("service worker caches only app shell assets and preview install assets", includesAll(files.serviceWorker, ["modeltab-shell-v38", "SHELL", "url.origin !== self.location.origin", "event.request.method !== \"GET\"", "caches.open(CACHE_NAME)", "icon-512.png", "screenshot.png"]));
+check("service worker caches only app shell assets and preview install assets", includesAll(files.serviceWorker, ["modeltab-shell-v39", "SHELL", "url.origin !== self.location.origin", "event.request.method !== \"GET\"", "caches.open(CACHE_NAME)", "icon-512.png", "screenshot.png"]));
 check("PWA manifest remains local-first with richer install metadata",
   manifest.id === "./" &&
   manifest.display === "standalone" &&
