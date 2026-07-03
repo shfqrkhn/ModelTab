@@ -6,7 +6,7 @@ Every model. One tab.
 
 - **Status:** Active flagship
 - **Live Demo:** [shfqrkhn.github.io/ModelTab](https://shfqrkhn.github.io/ModelTab/)
-- **Latest Release:** [v0.1.1](https://github.com/shfqrkhn/ModelTab/releases/latest)
+- **Latest Release:** [GitHub latest release](https://github.com/shfqrkhn/ModelTab/releases/latest)
 - **Bundled Tool:** [AI Studio Cleaner](https://shfqrkhn.github.io/ModelTab/tools/ai-studio-cleaner/)
 - **Portfolio Role:** Primary AI application.
 - **License:** MIT
