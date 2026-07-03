@@ -422,6 +422,51 @@ test("workspace trace reaches provider only after live verified tool output", as
   expect(serialized).not.toContain("workspace.select");
 });
 
+test("workspace clear trace control recovers after tool busy state", async ({ page }) => {
+  await page.addInitScript(() => {
+    const textFile = new File(["hello workspace\n"], "README.md", { type: "text/markdown" });
+    const fileHandle = {
+      kind: "file",
+      name: "README.md",
+      getFile: async () => textFile
+    };
+    const directory = {
+      kind: "directory",
+      name: "clear-trace-workspace",
+      queryPermission: async () => "granted",
+      requestPermission: async () => "granted",
+      entries: async function* entries() {
+        yield ["README.md", fileHandle];
+      },
+      getFileHandle: async (name) => {
+        if (name !== "README.md") throw new Error("not found");
+        return fileHandle;
+      },
+      getDirectoryHandle: async () => {
+        throw new Error("not found");
+      }
+    };
+    window.showDirectoryPicker = async () => directory;
+  });
+
+  await page.goto(appUrl);
+  await page.getByRole("button", { name: "Settings" }).click();
+  await page.locator("#workspaceSettingsDetails").evaluate((details) => { details.open = true; });
+  await page.locator("#workspaceEnableInput").check();
+  await expect(page.locator("#workspaceClearTraceBtn")).toBeDisabled();
+  await page.locator("#workspaceSelectBtn").click();
+  await expect(page.locator("#workspaceTrace")).toContainText("workspace.select");
+  await expect(page.locator("#workspaceClearTraceBtn")).toBeEnabled();
+
+  await page.locator("#workspaceListBtn").click();
+  await expect(page.locator("#workspaceTrace")).toContainText("README.md");
+  await expect(page.locator("#workspaceClearTraceBtn")).toBeEnabled();
+
+  await page.locator("#workspaceClearTraceBtn").click();
+  await expect(page.locator("#workspaceTrace")).toContainText("No workspace tool activity yet.");
+  await expect(page.locator("#workspaceClearTraceBtn")).toBeDisabled();
+});
+
 test("workspace folder reselection clears stale trace before provider context", async ({ page }) => {
   providerRequests.length = 0;
   await page.addInitScript(({ providerUrl }) => {

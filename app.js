@@ -1245,6 +1245,7 @@ function renderWorkspaceMode() {
   dom.workspaceListBtn.disabled = !workspaceReady();
   dom.workspaceSearchBtn.disabled = !workspaceReady();
   dom.workspaceInspectBtn.disabled = !workspaceReady();
+  dom.workspaceClearTraceBtn.disabled = !state.workspace.trace.length;
   dom.workspaceShareTraceInput.disabled = !state.workspace.enabled;
   dom.workspaceCapability.textContent = workspaceCapabilityText(supported);
   dom.workspaceStatus.textContent = workspaceStatusText();
@@ -1990,7 +1991,7 @@ function clearWorkspaceRuntimeInputs() {
 function clearWorkspaceTrace() {
   state.workspace.trace = [];
   saveState();
-  renderWorkspaceTrace();
+  renderWorkspaceMode();
   renderRuntimeNotice();
   renderSelfCheck();
   setStatus("Workspace trace cleared.");
