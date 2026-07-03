@@ -2,12 +2,12 @@
 
 Clean Google AI Studio chat exports into readable Markdown.
 
-- **Status:** Stable companion utility
+- **Status:** Integrated ModelTab utility
 - **Canonical Home:** [ModelTab/tools/ai-studio-cleaner](https://github.com/shfqrkhn/ModelTab/tree/main/tools/ai-studio-cleaner)
 - **Live Demo:** [shfqrkhn.github.io/ModelTab/tools/ai-studio-cleaner](https://shfqrkhn.github.io/ModelTab/tools/ai-studio-cleaner/)
 - **Portfolio Role:** AI utility supporting the ModelTab flagship.
 
-AI Studio Cleaner is a lightweight browser app inside `ModelTab` for parsing exported Google AI Studio conversation JSON files and converting them into clean Markdown, optionally including or hiding model reasoning blocks.
+AI Studio Cleaner is a lightweight browser tool inside `ModelTab` for parsing exported Google AI Studio conversation JSON files and converting them into clean Markdown, optionally including or hiding model reasoning blocks. It uses ModelTab navigation, includes a direct return path to the chat workspace, and has no third-party runtime dependency.
 
 ## Screenshot
 
@@ -24,11 +24,11 @@ AI Studio exports are useful but noisy. This tool turns them into portable, read
 - Lets users include or omit thinking/reasoning blocks.
 - Previews generated Markdown.
 - Copies or downloads the cleaned output.
-- Runs as static files with no backend.
+- Runs as static files with no backend, no CDN runtime, and no network dependency for normal use.
 
 ## Quick Start
 
-1. Open the live demo.
+1. Open the tool from the ModelTab sidebar, or open the live demo.
 2. Drop or select one or more AI Studio JSON export files.
 3. Choose whether to include reasoning blocks.
 4. Review the Markdown.
@@ -43,7 +43,7 @@ AI Studio exports are useful but noisy. This tool turns them into portable, read
 
 ## Relationship To Other Projects
 
-This utility is maintained inside `ModelTab`. Keep it focused on AI Studio export cleanup; broader AI chat, BYOK provider setup, and future import workflows belong in the parent app.
+This utility is maintained as an integrated ModelTab tool. Keep it focused on AI Studio export cleanup; broader AI chat, BYOK provider setup, and future import workflows belong in the parent app.
 
 ## Repository Layout
 
@@ -58,7 +58,7 @@ tools/ai-studio-cleaner/
 
 ## Deployment
 
-Open `index.html` locally, or serve it through the ModelTab GitHub Pages deployment at `/ModelTab/tools/ai-studio-cleaner/`.
+Open it from the ModelTab sidebar, open `index.html` locally, or serve it through the ModelTab GitHub Pages deployment at `/ModelTab/tools/ai-studio-cleaner/`.
 
 ## Maintenance
 

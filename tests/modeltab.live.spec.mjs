@@ -88,7 +88,8 @@ test("live GitHub Pages PWA metadata and preview assets are deployed", async ({ 
   const serviceWorkerResponse = await request.get(new URL("service-worker.js", liveUrl).href);
   expect(serviceWorkerResponse.status()).toBe(200);
   const serviceWorker = await serviceWorkerResponse.text();
-  expect(serviceWorker).toContain("modeltab-shell-v39");
+  expect(serviceWorker).toContain("modeltab-shell-v40");
+  expect(serviceWorker).toContain("./tools/ai-studio-cleaner/index.html");
   expect(serviceWorker).toContain("./icons/icon-512.png");
   expect(serviceWorker).toContain("./screenshot.png");
 });

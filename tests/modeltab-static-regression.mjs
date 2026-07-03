@@ -13,7 +13,8 @@ const files = {
   serviceWorker: read("service-worker.js"),
   manifest: read("manifest.webmanifest"),
   readme: read("README.md"),
-  license: read("LICENSE")
+  license: read("LICENSE"),
+  cleanerHtml: read("tools/ai-studio-cleaner/index.html")
 };
 const manifest = JSON.parse(files.manifest);
 
@@ -27,7 +28,7 @@ function includesAll(source, values) {
   return values.every((value) => source.includes(value));
 }
 
-check("no JS popup APIs in app shell", !/\b(alert|confirm|prompt)\s*\(/.test(`${files.html}\n${files.app}`));
+check("no JS popup APIs in app shell or bundled cleaner", !/\b(alert|confirm|prompt)\s*\(/.test(`${files.html}\n${files.app}\n${files.cleanerHtml}`));
 check("CSP blocks inline and third-party script execution", /Content-Security-Policy/.test(files.html) && /script-src 'self'/.test(files.html) && /object-src 'none'/.test(files.html));
 check("static local mode skips manifest and service worker", includesAll(files.app, ["function attachManifest()", "if (!isHttpLikePage()) return;", "function registerServiceWorker()", "serviceWorker"]));
 check("local-file smoke gate exists", files.readme.includes("npm run test:local-file") && read("tests/modeltab.local-file-smoke.mjs").includes("local-file contract smoke"));
@@ -46,7 +47,7 @@ check("primary interaction feedback and composer labeling exist", includesAll(`$
 check("tree chat organization and controls exist", includesAll(files.app, ["normalizeFolders", "renderFolderTree", "data-duplicate-chat", "data-archive-chat", "data-move-chat"]));
 check("workspace agent is explicit, read-only, trace-visible, and fail-closed", includesAll(files.app, ["showDirectoryPicker({ mode: \"read\" })", "Workspace Agent Mode", "workspaceTraceForModel", "WORKSPACE_ALLOWED_TOOLS", "Workspace Agent Mode will not guess", "no full files", "workspace.select", "resetWorkspaceSession", "disconnectWorkspaceHandle"]));
 check("workspace worker inspects binaries in a worker with wasm signal", includesAll(files.worker, ["detectFormat", "PE/COFF", "ELF", "Mach-O", "WebAssembly.validate", "hexdump", "sha256"]));
-check("service worker caches only app shell assets and preview install assets", includesAll(files.serviceWorker, ["modeltab-shell-v39", "SHELL", "url.origin !== self.location.origin", "event.request.method !== \"GET\"", "caches.open(CACHE_NAME)", "icon-512.png", "screenshot.png"]));
+check("service worker caches app shell, bundled cleaner, and preview install assets", includesAll(files.serviceWorker, ["modeltab-shell-v40", "SHELL", "url.origin !== self.location.origin", "event.request.method !== \"GET\"", "caches.open(CACHE_NAME)", "tools/ai-studio-cleaner/index.html", "icon-512.png", "screenshot.png"]));
 check("PWA manifest remains local-first with richer install metadata",
   manifest.id === "./" &&
   manifest.display === "standalone" &&
@@ -57,6 +58,13 @@ check("PWA manifest remains local-first with richer install metadata",
   manifest.screenshots?.some((screenshot) => screenshot.src === "./screenshot.png" && screenshot.sizes === "1440x1000"));
 check("README documents no-install, BYOK, providers, CORS, local file, PWA install, release download, privacy, and testing", includesAll(files.readme, ["no-install", "local-first BYOK", "OpenAI-compatible", "Gemini", "Direct browser calls require", "install the PWA", "Release And Download", "latest release zip", "Privacy And Data Model", "Local And Static Hosting", "Quality Gates"]));
 check("adoption surfaces include sponsor, release, bundled cleaner, screenshot, and MIT license", includesAll(`${files.html}\n${files.readme}`, ["https://github.com/sponsors/shfqrkhn?o=esb", "https://github.com/shfqrkhn/ModelTab/releases/latest", "tools/ai-studio-cleaner", "screenshot.png", "MIT"]) && includesAll(files.license, ["MIT License", "Permission is hereby granted"]));
+check("bundled cleaner is integrated into the ModelTab shell", includesAll(files.html, ["tool-link", "./tools/ai-studio-cleaner/index.html", "Open AI Studio Cleaner in ModelTab"]) && includesAll(files.cleanerHtml, ["modeltab-tool-bar", "Back to ModelTab", "../../index.html", "modeltab-tool-root", "Bundled ModelTab tool"]));
+check("bundled cleaner is local-first with no third-party runtime dependencies",
+  !/<script\b[^>]*src=["']https?:\/\//i.test(files.cleanerHtml) &&
+  !/<link\b(?=[^>]*\brel=["']stylesheet["'])(?=[^>]*\bhref=["']https?:\/\/)[^>]*>/i.test(files.cleanerHtml) &&
+  !/(cdn\.tailwindcss|unpkg\.com|ReactDOM|React\.|type=["']text\/babel["']|Babel|fonts\.googleapis|fonts\.gstatic)/i.test(files.cleanerHtml) &&
+  !/\b(fetch|XMLHttpRequest|sendBeacon)\s*\(/.test(files.cleanerHtml) &&
+  includesAll(files.cleanerHtml, ["parseAIStudioJSON", "generateMarkdown", "Upload AI Studio JSON export", "Generated Markdown"]));
 
 const failed = checks.filter((item) => !item.ok);
 if (failed.length) {

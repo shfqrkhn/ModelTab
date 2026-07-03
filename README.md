@@ -13,7 +13,7 @@ Every model. One tab.
 
 ModelTab is a no-install, local-first BYOK AI chat PWA for OpenAI-compatible endpoints, local/LAN LLM servers, and native Gemini API keys. It gives users a browser-based alternative to desktop AI chat tools: bring an endpoint, bring a key when needed, and use the provider directly from the browser.
 
-`AI-Studio-Cleaner` now lives inside this repository at `tools/ai-studio-cleaner/` as the focused utility for cleaning Google AI Studio exports into readable Markdown.
+AI Studio Cleaner now lives inside this repository at `tools/ai-studio-cleaner/` as an integrated, dependency-free ModelTab utility for cleaning Google AI Studio exports into readable Markdown.
 
 ## Screenshot
 
@@ -30,7 +30,7 @@ Many AI chat tools require a desktop install, a hosted account, or a single prov
 - Provides prompt library, system prompt presets, slash prompt search, prompt variables, memory, per-chat context, image input, JSON mode, streaming, regeneration, copy/edit, and tree chat organization.
 - Offers encrypted full backup, normal key-free export, import, local wipe, and browser-only operation.
 - Includes optional Workspace Agent Mode for explicit selected-folder, read-only inspection with visible tool traces.
-- Includes `tools/ai-studio-cleaner/` for local Google AI Studio export cleanup.
+- Includes an integrated, local-only AI Studio Cleaner tool for Google AI Studio export cleanup.
 
 ## Quick Start
 
@@ -53,9 +53,9 @@ Many AI chat tools require a desktop install, a hosted account, or a single prov
 
 AI Studio export cleanup:
 
-1. Open `tools/ai-studio-cleaner/index.html` locally or through the ModelTab Pages path.
+1. Open AI Studio Cleaner from the ModelTab sidebar, or directly through `tools/ai-studio-cleaner/`.
 2. Drop or select exported Google AI Studio JSON.
-3. Review, copy, or download the cleaned Markdown.
+3. Review, copy, or download the cleaned Markdown, then use **Back to ModelTab** to return to chat.
 
 ## Privacy And Data Model
 
@@ -87,7 +87,7 @@ AI Studio export cleanup:
 
 ## Relationship To Other Projects
 
-ModelTab is the main AI flagship. `AI-Studio-Cleaner` has been consolidated here to keep AI tooling in one canonical repo. Future AI import, cleanup, and migration workflows should extend this repository instead of creating or reviving separate AI utility repos.
+ModelTab is the main AI flagship. AI Studio Cleaner is maintained as a bundled ModelTab tool, not a separate app surface. Future AI import, cleanup, and migration workflows should extend this repository instead of creating or reviving separate AI utility repos.
 
 ## Repository Layout
 
