@@ -330,6 +330,43 @@ test("first-run onboarding opens key field and offers no-key local setup", async
   await expect(page.locator("#nextActions")).toContainText("Fetch Models");
 });
 
+test("phone provider setup normalizes pasted endpoint without horizontal overflow", async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 568 });
+  await page.goto(baseUrl);
+  await page.getByRole("button", { name: "Settings" }).click();
+  await page.locator("#providerBaseInput").fill("https://api.openai.com/v1/chat/completions?from=docs#example");
+  await page.locator("#saveProviderBtn").scrollIntoViewIfNeeded();
+  await page.locator("#saveProviderBtn").click();
+
+  const audit = await page.evaluate(() => ({
+    overflowX: Math.max(
+      0,
+      document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      document.body.scrollWidth - document.body.clientWidth
+    ),
+    settingsBox: (() => {
+      const box = document.querySelector("#settingsPanel")?.getBoundingClientRect();
+      return box ? { left: Math.round(box.left), right: Math.round(box.right), width: Math.round(box.width) } : null;
+    })(),
+    offscreenVisible: [...document.querySelectorAll("body *")]
+      .filter((element) => {
+        if (element.closest('.sidebar[aria-hidden="true"]')) return false;
+        const style = getComputedStyle(element);
+        if (style.display === "none" || style.visibility === "hidden" || Number(style.opacity) === 0) return false;
+        const box = element.getBoundingClientRect();
+        return box.width > 0 && box.height > 0 && (box.left < -1 || box.right > window.innerWidth + 1);
+      })
+      .map((element) => element.id || element.tagName.toLowerCase())
+  }));
+
+  await expect(page.locator("#providerBaseInput")).toHaveValue("https://api.openai.com/v1");
+  await expect(page.locator("#providerStatus")).toContainText("Provider saved");
+  expect(audit.overflowX).toBe(0);
+  expect(audit.offscreenVisible).toEqual([]);
+  expect(audit.settingsBox?.left).toBeGreaterThanOrEqual(0);
+  expect(audit.settingsBox?.right).toBeLessThanOrEqual(320);
+});
+
 test("downloaded index.html launches directly from file mode", async ({ page }) => {
   page.on("dialog", (dialog) => {
     throw new Error(`Unexpected JavaScript dialog: ${dialog.type()}`);

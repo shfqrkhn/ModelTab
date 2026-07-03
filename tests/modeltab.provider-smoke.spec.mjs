@@ -671,6 +671,112 @@ test("model fetch confirms connection and selects first missing model", async ({
   await expect(page.locator("#readinessTitle")).toContainText("Setup ready");
 });
 
+test("model fetch normalizes pasted OpenAI-compatible operation endpoints", async ({ page }) => {
+  await page.addInitScript(({ providerUrl }) => {
+    localStorage.setItem("modeltab-state-v1", JSON.stringify({
+      activeProviderId: "full-url-provider",
+      providers: [{
+        id: "full-url-provider",
+        name: "Full URL Provider",
+        type: "openai",
+        baseUrl: `${providerUrl}/chat/completions?ignored=true#docs`,
+        model: "",
+        extraHeaders: "",
+        noAuth: true
+      }],
+      settings: {
+        stream: false,
+        autoTrim: true,
+        recentTurns: 3,
+        maxInputTokens: 6000,
+        maxTokens: 256,
+        temperature: 0.2,
+        topP: 1
+      },
+      conversations: [{
+        id: "chat-full-url",
+        title: "Full URL provider",
+        context: "",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        messages: []
+      }],
+      activeConversationId: "chat-full-url"
+    }));
+  }, { providerUrl });
+
+  await page.goto(appUrl);
+  await page.getByRole("button", { name: "Settings" }).click();
+  await page.locator("#fetchModelsBtn").click();
+  await expect(page.locator("#providerStatus")).toContainText("Connected. Loaded 1 models. Selected smoke-model.");
+  await expect(page.locator("#providerBaseInput")).toHaveValue(providerUrl);
+  await expect(page.locator("#modelInput")).toHaveValue("smoke-model");
+});
+
+test("invalid provider base URL protocols fail inline before model fetch", async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem("modeltab-state-v1", JSON.stringify({
+      activeProviderId: "invalid-provider",
+      providers: [{
+        id: "invalid-provider",
+        name: "Invalid Provider",
+        type: "openai",
+        baseUrl: "ftp://example.com/v1",
+        model: "bad-model",
+        extraHeaders: "",
+        noAuth: true
+      }],
+      conversations: [{
+        id: "chat-invalid-provider",
+        title: "Invalid provider",
+        context: "",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        messages: []
+      }],
+      activeConversationId: "chat-invalid-provider"
+    }));
+  });
+
+  await page.goto(appUrl);
+  await page.getByRole("button", { name: "Settings" }).click();
+  await page.locator("#fetchModelsBtn").click();
+  await expect(page.locator("#providerStatus")).toContainText("Provider base URL must start with http:// or https://.");
+});
+
+test("legacy Perplexity default migrates to the model-fetchable v1 base", async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem("modeltab-state-v1", JSON.stringify({
+      providerPresetVersion: 6,
+      activeProviderId: "perplexity-default",
+      providers: [{
+        id: "perplexity-default",
+        name: "Perplexity",
+        type: "openai",
+        baseUrl: "https://api.perplexity.ai",
+        model: "sonar-pro",
+        extraHeaders: "",
+        noAuth: false,
+        presetId: "perplexity"
+      }],
+      conversations: [{
+        id: "chat-perplexity-migration",
+        title: "Perplexity migration",
+        context: "",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        messages: []
+      }],
+      activeConversationId: "chat-perplexity-migration"
+    }));
+  });
+
+  await page.goto(appUrl);
+  await page.getByRole("button", { name: "Settings" }).click();
+  await expect(page.locator("#providerBaseInput")).toHaveValue("https://api.perplexity.ai/v1");
+  await expect(page.locator("#providerPresetHelp")).toContainText("https://api.perplexity.ai/v1");
+});
+
 test("Ollama model fetch failures show provider-specific browser diagnostics", async ({ page }) => {
   await page.addInitScript(() => {
     localStorage.setItem("modeltab-state-v1", JSON.stringify({

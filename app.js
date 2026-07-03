@@ -12,7 +12,7 @@ const MAX_JSON_DEPTH = 64;
 const MAX_JSON_NODES = 200000;
 const MAX_JSON_KEY_LENGTH = 256;
 const MAX_ID_LENGTH = 128;
-const PROVIDER_PRESET_VERSION = 6;
+const PROVIDER_PRESET_VERSION = 7;
 const PROMPT_LIBRARY_VERSION = 2;
 const WORKSPACE_TRACE_LIMIT = 24;
 const WORKSPACE_MODEL_TRACE_LIMIT = 8;
@@ -207,7 +207,7 @@ const PROVIDER_PRESETS = [
     name: "Perplexity",
     category: "Cloud",
     type: "openai",
-    baseUrl: "https://api.perplexity.ai",
+    baseUrl: "https://api.perplexity.ai/v1",
     model: "sonar-pro",
     extraHeaders: "",
     noAuth: false,
@@ -552,12 +552,20 @@ const DEFAULT_PROMPT_LIBRARY = [
 const LEGACY_PRESET_DEFAULTS = {
   "openai-default": {
     name: "OpenAI Compatible",
+    baseUrl: "https://api.openai.com/v1",
     model: "gpt-4.1-mini",
     extraHeaders: ""
   },
   "gemini-default": {
     name: "Gemini Native",
+    baseUrl: "https://generativelanguage.googleapis.com/v1beta",
     model: "gemini-2.5-flash",
+    extraHeaders: ""
+  },
+  "perplexity-default": {
+    name: "Perplexity",
+    baseUrl: "https://api.perplexity.ai",
+    model: "sonar-pro",
     extraHeaders: ""
   }
 };
@@ -1354,9 +1362,16 @@ function presetForProvider(provider) {
 function providerPresetForBaseUrl(baseUrl) {
   const url = parseUrl(baseUrl);
   if (!url) return null;
-  const normalized = normalizeEndpointUrl(url.href);
+  const inferredType = url.hostname === "generativelanguage.googleapis.com" && !url.pathname.includes("/openai") ? "gemini" : "openai";
+  let normalized = "";
+  try {
+    normalized = normalizeEndpointUrl(normalizeProviderBaseUrl(url.href, inferredType));
+  } catch {
+    return null;
+  }
   const exact = PROVIDER_PRESETS.find((preset) => normalizeEndpointUrl(preset.baseUrl) === normalized);
   if (exact) return exact;
+  if (url.hostname === "api.perplexity.ai") return presetById("perplexity");
   if (url.hostname.endsWith(".openai.azure.com") && url.pathname.startsWith("/openai/v1")) return presetById("azure-openai");
   if (url.hostname === "generativelanguage.googleapis.com") {
     return url.pathname.includes("/openai") ? presetById("gemini-openai") : presetById("gemini-native");
@@ -1443,6 +1458,39 @@ function normalizeEndpointUrl(value) {
   const url = parseUrl(value);
   if (!url) return "";
   return `${url.protocol}//${url.host}${url.pathname.replace(/\/+$/, "")}`;
+}
+
+function normalizeProviderBaseUrl(baseUrl, type = "openai") {
+  const raw = String(baseUrl || "").trim();
+  if (!raw) return "";
+  const url = parseUrl(raw);
+  if (!url || !["http:", "https:"].includes(url.protocol)) {
+    throw new Error("Provider base URL must start with http:// or https://.");
+  }
+  url.hash = "";
+  url.search = "";
+  url.pathname = normalizeProviderPath(url.pathname, type);
+  return trimSlash(url.href);
+}
+
+function normalizeProviderPath(pathname, type = "openai") {
+  const suffixes = type === "gemini"
+    ? ["/models"]
+    : ["/chat/completions", "/completions", "/responses", "/models"];
+  let pathnameRoot = String(pathname || "/").replace(/\/+$/g, "") || "/";
+  let changed = true;
+  while (changed) {
+    changed = false;
+    const lowerPath = pathnameRoot.toLowerCase();
+    for (const suffix of suffixes) {
+      if (lowerPath.endsWith(suffix)) {
+        pathnameRoot = pathnameRoot.slice(0, -suffix.length).replace(/\/+$/g, "") || "/";
+        changed = true;
+        break;
+      }
+    }
+  }
+  return pathnameRoot;
 }
 
 function renderConversationList() {
@@ -2589,10 +2637,10 @@ function ensureMissingProviderPresets(nextState) {
 function reconcilePresetProvider(provider, preset) {
   const legacy = LEGACY_PRESET_DEFAULTS[provider.id];
   const wasLegacyDefault = legacy
-    && provider.baseUrl === preset.baseUrl
     && provider.name === legacy.name
     && provider.model === legacy.model
-    && provider.extraHeaders === legacy.extraHeaders;
+    && provider.extraHeaders === legacy.extraHeaders
+    && (!legacy.baseUrl || provider.baseUrl === legacy.baseUrl);
 
   provider.presetId = provider.presetId || preset.id;
   if (wasLegacyDefault) {
@@ -2608,15 +2656,19 @@ function reconcilePresetProvider(provider, preset) {
 function saveProviderFromForm() {
   const provider = activeProvider();
   if (!provider) return false;
+  const rawBaseUrl = dom.providerBaseInput.value.trim();
+  let normalizedBaseUrl = "";
   try {
     parseHeaders(dom.providerHeadersInput.value.trim());
+    normalizedBaseUrl = normalizeProviderBaseUrl(rawBaseUrl, dom.providerTypeInput.value);
   } catch (error) {
     setStatus(error.message, true);
     return false;
   }
   provider.name = dom.providerNameInput.value.trim() || "Provider";
   provider.type = dom.providerTypeInput.value;
-  provider.baseUrl = dom.providerBaseInput.value.trim();
+  provider.baseUrl = normalizedBaseUrl;
+  dom.providerBaseInput.value = normalizedBaseUrl;
   provider.extraHeaders = dom.providerHeadersInput.value.trim();
   provider.model = dom.modelInput.value.trim() || provider.model || "";
   provider.noAuth = provider.type === "openai" && dom.providerNoAuthInput.checked;
@@ -2628,7 +2680,7 @@ function saveProviderFromForm() {
   }
   saveState();
   renderProviderSelectors();
-  setStatus("Provider saved.");
+  setStatus(rawBaseUrl && normalizedBaseUrl !== rawBaseUrl ? "Provider saved. Base URL normalized to the provider root." : "Provider saved.");
   renderSelfCheck();
   return true;
 }
