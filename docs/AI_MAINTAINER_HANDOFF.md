@@ -19,6 +19,7 @@ Maintain ModelTab as the flagship no-install BYOK AI chat PWA. It must remain st
 - Keep optional Workspace Agent Mode opt-in, selected-folder scoped, read-only by default, trace-visible, and fail-closed when no verified tool trace exists.
 - Keep all critical workflows usable by keyboard-only, mouse-only, and touch-only input.
 - Avoid JS popup APIs; use in-app UI and toasts.
+- Treat OmniOS/OmniDevOS materials in the local GH workspace docs bundle as private process references only. Do not expand ModelTab scope from those files unless the user explicitly requests product work.
 
 ## Key Files
 
