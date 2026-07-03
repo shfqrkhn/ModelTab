@@ -542,12 +542,16 @@ test("Gemini native provider sends expected request shape without Authorization"
         maxTokens: 256,
         temperature: 0.2,
         topP: 1,
-        systemPrompt: "System seed"
+        systemPrompt: "System seed",
+        memory: "Memory seed",
+        jsonMode: true,
+        grounding: true,
+        extraBody: "{\"safetySettings\":[{\"category\":\"HARM_CATEGORY_DANGEROUS_CONTENT\",\"threshold\":\"BLOCK_NONE\"}]}"
       },
       conversations: [{
         id: "chat-gemini",
         title: "Gemini smoke",
-        context: "",
+        context: "Chat context seed",
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         messages: []
@@ -568,7 +572,246 @@ test("Gemini native provider sends expected request shape without Authorization"
   expect(request.headers.authorization).toBeUndefined();
   expect(request.headers["x-goog-api-key"]).toBe("gemini-key");
   expect(request.body.systemInstruction.parts[0].text).toContain("System seed");
+  expect(request.body.systemInstruction.parts[0].text).toContain("Persistent memory:\nMemory seed");
+  expect(request.body.systemInstruction.parts[0].text).toContain("Current chat context:\nChat context seed");
+  expect(request.body.generationConfig.responseMimeType).toBe("application/json");
+  expect(request.body.tools).toEqual([{ googleSearch: {} }]);
+  expect(request.body.safetySettings[0].category).toBe("HARM_CATEGORY_DANGEROUS_CONTENT");
   expect(request.body.contents.at(-1).parts[0].text).toBe("hello gemini");
+});
+
+test("OpenAI request preserves context, additive extra body, and historical image policy", async ({ page }) => {
+  providerRequests.length = 0;
+  await page.addInitScript(({ providerUrl }) => {
+    localStorage.setItem("modeltab-state-v1", JSON.stringify({
+      activeProviderId: "shape-provider",
+      providers: [{
+        id: "shape-provider",
+        name: "Shape Provider",
+        type: "openai",
+        baseUrl: providerUrl,
+        model: "shape-model",
+        extraHeaders: "",
+        noAuth: true
+      }],
+      settings: {
+        stream: false,
+        autoTrim: true,
+        recentTurns: 4,
+        maxInputTokens: 6000,
+        maxTokens: 123,
+        temperature: 0.3,
+        topP: 0.8,
+        systemPrompt: "System shape",
+        memory: "Memory shape",
+        historyImages: false,
+        extraBody: "{\"metadata\":{\"source\":\"modeltab-test\"},\"reasoning_effort\":\"low\"}"
+      },
+      conversations: [{
+        id: "chat-shape",
+        title: "Shape chat",
+        context: "Chat context shape",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        messages: [
+          {
+            id: "old-user",
+            role: "user",
+            content: "old image prompt",
+            attachments: [{
+              id: "image-old",
+              name: "old.png",
+              type: "image/png",
+              size: 3,
+              dataUrl: "data:image/png;base64,AAAA"
+            }],
+            createdAt: new Date().toISOString()
+          },
+          { id: "old-assistant", role: "assistant", content: "old answer", createdAt: new Date().toISOString() }
+        ]
+      }],
+      activeConversationId: "chat-shape"
+    }));
+  }, { providerUrl });
+
+  await page.goto(appUrl);
+  await page.getByPlaceholder("Ask anything. Shift+Enter for a new line.").fill("latest request");
+  await page.getByRole("button", { name: "Send" }).click();
+  await expect(page.locator(".message.assistant .markdown").last()).toContainText("smoke-ok");
+
+  const body = providerRequests.filter((item) => item.kind === "openai").at(-1).body;
+  expect(body.model).toBe("shape-model");
+  expect(body.stream).toBe(false);
+  expect(body.max_tokens).toBe(123);
+  expect(body.temperature).toBe(0.3);
+  expect(body.top_p).toBe(0.8);
+  expect(body.metadata.source).toBe("modeltab-test");
+  expect(body.reasoning_effort).toBe("low");
+  expect(body.messages[0].role).toBe("system");
+  expect(body.messages[0].content).toContain("System shape");
+  expect(body.messages[0].content).toContain("Persistent memory:\nMemory shape");
+  expect(body.messages[0].content).toContain("Current chat context:\nChat context shape");
+  expect(body.messages.some((message) => JSON.stringify(message).includes("image_url"))).toBe(false);
+  expect(body.messages.at(-1)).toEqual({ role: "user", content: "latest request" });
+});
+
+test("OpenAI request includes historical images only when explicitly enabled", async ({ page }) => {
+  providerRequests.length = 0;
+  await page.addInitScript(({ providerUrl }) => {
+    localStorage.setItem("modeltab-state-v1", JSON.stringify({
+      activeProviderId: "image-history-provider",
+      providers: [{
+        id: "image-history-provider",
+        name: "Image History Provider",
+        type: "openai",
+        baseUrl: providerUrl,
+        model: "image-history-model",
+        extraHeaders: "",
+        noAuth: true
+      }],
+      settings: {
+        stream: false,
+        autoTrim: true,
+        recentTurns: 4,
+        maxInputTokens: 6000,
+        maxTokens: 256,
+        temperature: 0.2,
+        topP: 1,
+        historyImages: true
+      },
+      conversations: [{
+        id: "chat-image-history",
+        title: "Image history",
+        context: "",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        messages: [
+          {
+            id: "old-user",
+            role: "user",
+            content: "old image prompt",
+            attachments: [{
+              id: "image-old",
+              name: "old.png",
+              type: "image/png",
+              size: 3,
+              dataUrl: "data:image/png;base64,AAAA"
+            }],
+            createdAt: new Date().toISOString()
+          },
+          { id: "old-assistant", role: "assistant", content: "old answer", createdAt: new Date().toISOString() }
+        ]
+      }],
+      activeConversationId: "chat-image-history"
+    }));
+  }, { providerUrl });
+
+  await page.goto(appUrl);
+  await page.getByPlaceholder("Ask anything. Shift+Enter for a new line.").fill("latest request");
+  await page.getByRole("button", { name: "Send" }).click();
+  await expect(page.locator(".message.assistant .markdown").last()).toContainText("smoke-ok");
+
+  const body = providerRequests.filter((item) => item.kind === "openai").at(-1).body;
+  const imagePart = body.messages.find((message) => Array.isArray(message.content))?.content.find((part) => part.type === "image_url");
+  expect(imagePart.image_url.url).toBe("data:image/png;base64,AAAA");
+});
+
+test("extra request body cannot override core provider payload fields", async ({ page }) => {
+  providerRequests.length = 0;
+  await page.addInitScript(({ providerUrl }) => {
+    localStorage.setItem("modeltab-state-v1", JSON.stringify({
+      activeProviderId: "override-provider",
+      providers: [{
+        id: "override-provider",
+        name: "Override Provider",
+        type: "openai",
+        baseUrl: providerUrl,
+        model: "override-model",
+        extraHeaders: "",
+        noAuth: true
+      }],
+      settings: {
+        stream: false,
+        autoTrim: true,
+        recentTurns: 3,
+        maxInputTokens: 6000,
+        maxTokens: 256,
+        temperature: 0.2,
+        topP: 1,
+        extraBody: "{\"messages\":[{\"role\":\"user\",\"content\":\"override\"}]}"
+      },
+      conversations: [{
+        id: "chat-override",
+        title: "Override guard",
+        context: "",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        messages: []
+      }],
+      activeConversationId: "chat-override"
+    }));
+  }, { providerUrl });
+
+  await page.goto(appUrl);
+  await page.getByPlaceholder("Ask anything. Shift+Enter for a new line.").fill("should not send");
+  await page.getByRole("button", { name: "Send" }).click();
+  await expect(page.locator("#providerStatus")).toContainText("Extra request body cannot override core request field: messages.");
+  expect(providerRequests.filter((item) => item.kind === "openai")).toHaveLength(0);
+});
+
+test("recent-turn trimming is reflected in token summary and provider request body", async ({ page }) => {
+  providerRequests.length = 0;
+  await page.addInitScript(({ providerUrl }) => {
+    localStorage.setItem("modeltab-state-v1", JSON.stringify({
+      activeProviderId: "trim-provider",
+      providers: [{
+        id: "trim-provider",
+        name: "Trim Provider",
+        type: "openai",
+        baseUrl: providerUrl,
+        model: "trim-model",
+        extraHeaders: "",
+        noAuth: true
+      }],
+      settings: {
+        stream: false,
+        autoTrim: true,
+        recentTurns: 1,
+        maxInputTokens: 6000,
+        maxTokens: 256,
+        temperature: 0.2,
+        topP: 1
+      },
+      conversations: [{
+        id: "chat-trim",
+        title: "Trim chat",
+        context: "",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        messages: [
+          { id: "old-user-1", role: "user", content: "old user 1", createdAt: new Date().toISOString() },
+          { id: "old-assistant-1", role: "assistant", content: "old assistant 1", createdAt: new Date().toISOString() },
+          { id: "kept-user", role: "user", content: "kept user", createdAt: new Date().toISOString() },
+          { id: "kept-assistant", role: "assistant", content: "kept assistant", createdAt: new Date().toISOString() }
+        ]
+      }],
+      activeConversationId: "chat-trim"
+    }));
+  }, { providerUrl });
+
+  await page.goto(appUrl);
+  await expect(page.locator("#readinessDetail")).toContainText("2 older msg trimmed");
+  await page.getByPlaceholder("Ask anything. Shift+Enter for a new line.").fill("latest trim request");
+  await page.getByRole("button", { name: "Send" }).click();
+  await expect(page.locator(".message.assistant .markdown").last()).toContainText("smoke-ok");
+
+  const body = providerRequests.filter((item) => item.kind === "openai").at(-1).body;
+  const serialized = JSON.stringify(body.messages);
+  expect(serialized).not.toContain("old user 1");
+  expect(serialized).not.toContain("old assistant 1");
+  expect(serialized).not.toContain("kept user");
+  expect(serialized).toContain("kept assistant");
+  expect(serialized).toContain("latest trim request");
 });
 
 test("provider failures, aborts, and offline state surface in-app", async ({ page }) => {

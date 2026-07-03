@@ -41,6 +41,17 @@ const RESERVED_EXTRA_HEADERS = new Set([
   "x-auth-token",
   "x-access-token"
 ]);
+const BLOCKED_EXTRA_BODY_TOP_LEVEL_KEYS = new Set([
+  "model",
+  "messages",
+  "contents",
+  "systemInstruction",
+  "tools",
+  "tool_choice",
+  "functions",
+  "function_call",
+  "stream"
+]);
 const HEADER_NAME_PATTERN = /^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$/;
 const SETTINGS_OVERLAY_MEDIA = window.matchMedia("(max-width: 1600px)");
 const SIDEBAR_OVERLAY_MEDIA = window.matchMedia("(max-width: 980px)");
@@ -2828,7 +2839,7 @@ function insertPendingPromptTemplate() {
 
 function saveControls() {
   try {
-    parseExtraBody(dom.extraBodyInput.value);
+    validateExtraBody(dom.extraBodyInput.value, activeProvider());
   } catch (error) {
     setStatus(error.message, true);
     return false;
@@ -3169,7 +3180,7 @@ async function callOpenAICompatible(provider, key, chat, onToken, signal) {
     stream: state.settings.stream
   };
   if (state.settings.jsonMode) payload.response_format = { type: "json_object" };
-  deepMerge(payload, parseExtraBody());
+  mergeExtraBody(payload, parseExtraBody());
 
   const response = await fetch(`${trimSlash(provider.baseUrl)}/chat/completions`, {
     method: "POST",
@@ -3206,7 +3217,7 @@ async function callGemini(provider, key, chat, onToken, signal) {
   if (system) payload.systemInstruction = { parts: [{ text: system }] };
   if (state.settings.jsonMode) payload.generationConfig.responseMimeType = "application/json";
   if (state.settings.grounding) payload.tools = [{ googleSearch: {} }];
-  deepMerge(payload, parseExtraBody());
+  mergeExtraBody(payload, parseExtraBody());
 
   const method = state.settings.stream ? "streamGenerateContent?alt=sse" : "generateContent";
   const response = await fetch(`${trimSlash(provider.baseUrl)}/${modelPath}:${method}`, {
@@ -3392,6 +3403,56 @@ function parseExtraBody(rawValue = state.settings.extraBody) {
   const raw = rawValue?.trim();
   if (!raw) return {};
   return parseJsonObject(raw, "Extra request body");
+}
+
+function validateExtraBody(rawValue = state.settings.extraBody, provider = activeProvider()) {
+  const extra = parseExtraBody(rawValue);
+  mergeExtraBody(extraBodyValidationTarget(provider?.type), structuredClone(extra));
+  return extra;
+}
+
+function extraBodyValidationTarget(type) {
+  if (type === "gemini") {
+    return {
+      contents: [],
+      generationConfig: {
+        temperature: 0,
+        topP: 0,
+        maxOutputTokens: 0,
+        responseMimeType: ""
+      },
+      systemInstruction: {},
+      tools: []
+    };
+  }
+  return {
+    model: "",
+    messages: [],
+    temperature: 0,
+    top_p: 0,
+    max_tokens: 0,
+    stream: false,
+    response_format: {}
+  };
+}
+
+function mergeExtraBody(target, source, path = []) {
+  for (const [key, value] of Object.entries(source || {})) {
+    const fieldPath = [...path, key];
+    if (!path.length && BLOCKED_EXTRA_BODY_TOP_LEVEL_KEYS.has(key)) {
+      throw new Error(`Extra request body cannot override core request field: ${fieldPath.join(".")}.`);
+    }
+    if (Object.hasOwn(target, key)) {
+      if (isMergeableObject(value) && isMergeableObject(target[key])) {
+        mergeExtraBody(target[key], value, fieldPath);
+      } else {
+        throw new Error(`Extra request body cannot override core request field: ${fieldPath.join(".")}.`);
+      }
+    } else {
+      target[key] = value;
+    }
+  }
+  return target;
 }
 
 function buildHeaders(provider, key, json = true, gemini = false) {
