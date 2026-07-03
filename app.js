@@ -684,6 +684,7 @@ const dom = {
   saveVaultBtn: $("saveVaultBtn"),
   searchInput: $("searchInput"),
   sendBtn: $("sendBtn"),
+  settingsModelInput: $("settingsModelInput"),
   settingsBtn: $("settingsBtn"),
   settingsPanel: $("settingsPanel"),
   settingsProviderSelect: $("settingsProviderSelect"),
@@ -753,6 +754,7 @@ function registerEvents() {
     saveDraftForActiveChat();
     createConversation();
     closeMobileSidebar();
+    setStatus("New chat ready.");
   });
   dom.newFolderBtn.addEventListener("click", addFolder);
   dom.archiveToggleBtn.addEventListener("click", toggleArchiveView);
@@ -763,21 +765,15 @@ function registerEvents() {
   dom.providerSelect.addEventListener("change", () => {
     state.activeProviderId = dom.providerSelect.value;
     const provider = activeProvider();
-    if (provider) dom.modelInput.value = provider.model || "";
+    if (provider) syncModelInputs(provider.model || "");
     saveState();
     syncSettingsForm();
     renderMeta();
     renderSelfCheck();
+    if (provider) setStatus(`Provider selected: ${provider.name}.`);
   });
-  dom.modelInput.addEventListener("change", () => {
-    const provider = activeProvider();
-    if (provider) {
-      provider.model = dom.modelInput.value.trim();
-      saveState();
-      renderMeta();
-      renderSelfCheck();
-    }
-  });
+  dom.modelInput.addEventListener("change", () => saveModelFromInput(dom.modelInput));
+  dom.settingsModelInput.addEventListener("change", () => saveModelFromInput(dom.settingsModelInput));
   dom.chatTitleInput.addEventListener("change", () => {
     const chat = activeConversation();
     if (!chat) return;
@@ -785,6 +781,7 @@ function registerEvents() {
     chat.updatedAt = new Date().toISOString();
     saveState();
     renderConversationList();
+    setStatus(`Chat renamed: ${chat.title}.`);
   });
   dom.settingsBtn.addEventListener("click", toggleSettingsPanel);
   dom.closeSettingsBtn.addEventListener("click", () => closeSettings({ collapse: true, restoreFocus: true }));
@@ -817,6 +814,8 @@ function registerEvents() {
     renderProviderSelectors();
     syncSettingsForm();
     renderMeta();
+    const provider = activeProvider();
+    if (provider) setStatus(`Provider selected: ${provider.name}.`);
   });
   dom.providerTypeInput.addEventListener("change", syncNoAuthAvailability);
   dom.providerBaseInput.addEventListener("change", inferProviderFromBaseUrl);
@@ -1328,7 +1327,7 @@ function renderProviderSelectors() {
   const provider = activeProvider();
   const activePreset = presetForProvider(provider);
   if (activePreset) dom.providerPresetSelect.value = activePreset.id;
-  dom.modelInput.value = provider?.model || "";
+  syncModelInputs(provider?.model || "");
   renderModelSuggestions(provider);
   renderPresetHelp();
 }
@@ -1342,6 +1341,27 @@ function renderPresetHelp() {
   const auth = preset.noAuth ? "no key" : "API key";
   const models = modelSuggestionsFromPreset(preset).slice(0, 3).join(", ");
   dom.providerPresetHelp.textContent = `${preset.category || "Provider"} · ${preset.type === "gemini" ? "Gemini native" : "OpenAI-compatible"} · ${auth} · ${preset.baseUrl}${models ? ` · ${models}` : ""}`;
+}
+
+function syncModelInputs(model) {
+  const value = String(model || "");
+  dom.modelInput.value = value;
+  dom.settingsModelInput.value = value;
+}
+
+function currentModelDraft() {
+  return dom.settingsModelInput.value.trim() || dom.modelInput.value.trim();
+}
+
+function saveModelFromInput(input) {
+  const provider = activeProvider();
+  if (!provider) return;
+  provider.model = input.value.trim();
+  syncModelInputs(provider.model);
+  saveState();
+  renderMeta();
+  renderSelfCheck();
+  setStatus(provider.model ? `Model set: ${provider.model}.` : "Model cleared.");
 }
 
 function renderModelSuggestions(provider = activeProvider(), fetchedModels = []) {
@@ -2525,6 +2545,7 @@ function syncSettingsForm() {
   dom.providerNameInput.value = provider.name || "";
   dom.providerTypeInput.value = provider.type || "openai";
   dom.providerBaseInput.value = provider.baseUrl || "";
+  syncModelInputs(provider.model || "");
   dom.providerKeyInput.value = sessionKeys[provider.id] || "";
   dom.providerNoAuthInput.checked = Boolean(provider.noAuth);
   dom.providerHeadersInput.value = provider.extraHeaders || "";
@@ -2565,10 +2586,10 @@ function inferProviderFromBaseUrl() {
     dom.providerHeadersInput.value = dom.providerHeadersInput.value.trim() || preset.extraHeaders;
     dom.providerNoAuthInput.checked = Boolean(preset.noAuth);
     if (genericName) dom.providerNameInput.value = preset.name;
-    if (!dom.modelInput.value.trim()) dom.modelInput.value = preset.model;
+    if (!currentModelDraft()) syncModelInputs(preset.model);
     provider.presetId = preset.id;
     renderPresetHelp();
-    renderModelSuggestions({ ...provider, presetId: preset.id, model: dom.modelInput.value.trim() || preset.model });
+    renderModelSuggestions({ ...provider, presetId: preset.id, model: currentModelDraft() || preset.model });
     syncNoAuthAvailability();
     if (saveProviderFromForm()) setStatus(`${preset.name} settings detected.`);
     return;
@@ -2577,7 +2598,7 @@ function inferProviderFromBaseUrl() {
     dom.providerTypeInput.value = "openai";
     dom.providerNoAuthInput.checked = true;
     if (genericName) dom.providerNameInput.value = "Local Network OpenAI Compatible";
-    if (!dom.modelInput.value.trim()) dom.modelInput.value = "local-model";
+    if (!currentModelDraft()) syncModelInputs("local-model");
     syncNoAuthAvailability();
     if (saveProviderFromForm()) setStatus("Local OpenAI-compatible endpoint detected.");
   }
@@ -2670,7 +2691,8 @@ function saveProviderFromForm() {
   provider.baseUrl = normalizedBaseUrl;
   dom.providerBaseInput.value = normalizedBaseUrl;
   provider.extraHeaders = dom.providerHeadersInput.value.trim();
-  provider.model = dom.modelInput.value.trim() || provider.model || "";
+  provider.model = currentModelDraft() || provider.model || "";
+  syncModelInputs(provider.model);
   provider.noAuth = provider.type === "openai" && dom.providerNoAuthInput.checked;
   const key = dom.providerKeyInput.value.trim();
   if (key) {
@@ -2734,7 +2756,7 @@ async function fetchModels() {
     renderModelSuggestions(provider, models);
     if (!provider.model && models.length) {
       provider.model = models[0];
-      dom.modelInput.value = provider.model;
+      syncModelInputs(provider.model);
       saveState();
       renderMeta();
       renderSelfCheck();
@@ -2746,7 +2768,7 @@ async function fetchModels() {
   }
 }
 
-function saveInstructions() {
+function saveInstructions({ silent = false } = {}) {
   const chat = activeConversation();
   state.settings.systemPrompt = dom.systemPromptInput.value.trim();
   state.settings.memory = dom.memoryInput.value.trim();
@@ -2756,6 +2778,7 @@ function saveInstructions() {
   }
   saveState();
   renderMeta();
+  if (!silent) setStatus("Instructions and memory saved.");
 }
 
 function openPromptLibrary() {
@@ -2853,7 +2876,7 @@ function applySelectedSystemPrompt() {
 
 function applySystemPrompt(item) {
   dom.systemPromptInput.value = item.content;
-  saveInstructions();
+  saveInstructions({ silent: true });
   setStatus(`Applied system prompt: ${item.name}`);
 }
 
@@ -2905,7 +2928,7 @@ function insertPendingPromptTemplate() {
   insertPromptText(fillPromptVariables(item.content, values), item.name);
 }
 
-function saveControls() {
+function saveControls({ silent = false } = {}) {
   try {
     validateExtraBody(dom.extraBodyInput.value, activeProvider());
   } catch (error) {
@@ -2925,12 +2948,14 @@ function saveControls() {
   state.settings.extraBody = dom.extraBodyInput.value.trim();
   saveState();
   renderSelfCheck();
+  if (!silent) setStatus("Generation controls saved.");
   return true;
 }
 
 async function handleImages() {
   const files = [...dom.imageInput.files].slice(0, 8);
   let draftBytes = draftAttachments.reduce((total, attachment) => total + (attachment.size || 0), 0);
+  let attached = 0;
   for (const file of files) {
     if (!SUPPORTED_IMAGE_TYPES.has(file.type) || file.size > MAX_IMAGE_BYTES || draftBytes + file.size > MAX_DRAFT_IMAGE_BYTES) {
       setStatus("Skipped an unsupported or oversized image.", true);
@@ -2945,9 +2970,11 @@ async function handleImages() {
       size: file.size,
       dataUrl
     });
+    attached += 1;
   }
   dom.imageInput.value = "";
   renderAttachments();
+  if (attached) setStatus(`${attached} image${attached === 1 ? "" : "s"} attached.`);
 }
 
 function renderAttachments() {
@@ -2963,6 +2990,7 @@ function renderAttachments() {
     button.addEventListener("click", () => {
       draftAttachments = draftAttachments.filter((item) => item.id !== button.dataset.removeAttachment);
       renderAttachments();
+      setStatus("Attachment removed.");
     });
   });
   renderIntentActions();
@@ -3078,8 +3106,8 @@ function escapeRegExp(value) {
 async function sendPrompt() {
   if (activeRequest) return;
   saveDraftForActiveChat();
-  if (!saveControls()) return;
-  saveInstructions();
+  if (!saveControls({ silent: true })) return;
+  saveInstructions({ silent: true });
   const text = dom.promptInput.value.trim();
   if (!text && !draftAttachments.length) return;
   const chat = activeConversation() || createConversation(false);
@@ -3787,10 +3815,36 @@ function findPreviousUserIndex(messages, start) {
   return -1;
 }
 
-function copyMessage(index) {
+async function copyMessage(index) {
   const message = activeConversation()?.messages[index];
   if (!message) return;
-  navigator.clipboard?.writeText(message.content || "");
+  const copied = await copyText(message.content || "");
+  setStatus(copied ? "Message copied." : "Copy failed. Select the message text and copy manually.", !copied);
+}
+
+async function copyText(value) {
+  const text = String(value || "");
+  if (navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch {
+      // Fall through to the local DOM fallback for restricted browser contexts.
+    }
+  }
+  try {
+    const textarea = document.createElement("textarea");
+    textarea.value = text;
+    textarea.setAttribute("readonly", "");
+    textarea.className = "visually-hidden";
+    document.body.appendChild(textarea);
+    textarea.select();
+    const ok = document.execCommand?.("copy") === true;
+    textarea.remove();
+    return ok;
+  } catch {
+    return false;
+  }
 }
 
 function deleteActiveChat() {

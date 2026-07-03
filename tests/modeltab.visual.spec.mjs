@@ -367,6 +367,81 @@ test("phone provider setup normalizes pasted endpoint without horizontal overflo
   expect(audit.settingsBox?.right).toBeLessThanOrEqual(320);
 });
 
+for (const viewport of [
+  { width: 320, height: 568 },
+  { width: 1920, height: 1080 }
+]) {
+  test(`explicit actions provide visible feedback at ${viewport.width}x${viewport.height}`, async ({ page }) => {
+    await page.setViewportSize(viewport);
+    await page.addInitScript((state) => {
+      Object.defineProperty(navigator, "clipboard", {
+        configurable: true,
+        value: {
+          writeText: async (text) => { window.__modeltabCopiedText = text; }
+        }
+      });
+      localStorage.setItem("modeltab-state-v1", JSON.stringify(state));
+    }, seededAuditState);
+    await page.goto(baseUrl);
+
+    await page.locator("[data-copy-index]").first().click();
+    await expect(page.locator("#toastRegion")).toContainText("Message copied.");
+    await expect.poll(() => page.evaluate(() => window.__modeltabCopiedText || "")).toContain("Explain the current result");
+
+    if (viewport.width < 980) await page.getByRole("button", { name: "Toggle conversations" }).click();
+    await page.getByRole("button", { name: "New Chat" }).click();
+    await expect(page.locator("#toastRegion")).toContainText("New chat ready.");
+
+    await page.locator("#chatTitleInput").fill("Interaction feedback smoke");
+    await page.locator("#promptInput").focus();
+    await expect(page.locator("#toastRegion")).toContainText("Chat renamed: Interaction feedback smoke.");
+
+    if (viewport.width < 820) {
+      if (await page.locator("#settingsPanel").getAttribute("aria-hidden") === "true") {
+        await page.getByRole("button", { name: "Settings" }).click();
+      }
+      await expect(page.locator("#settingsModelInput")).toBeVisible();
+      await page.locator("#settingsModelInput").fill("feedback-model");
+      await page.locator("#providerBaseInput").focus();
+    } else {
+      await page.locator("#modelInput").fill("feedback-model");
+      await page.locator("#promptInput").focus();
+    }
+    await expect(page.locator("#toastRegion")).toContainText("Model set: feedback-model.");
+
+    if (await page.locator("#settingsPanel").getAttribute("aria-hidden") === "true") {
+      await page.getByRole("button", { name: "Settings" }).click();
+    }
+    await page.locator("#instructionsSettingsDetails").evaluate((details) => { details.open = true; });
+    await page.locator("#memoryInput").fill("Remember concise interaction feedback.");
+    await page.locator("#saveInstructionsBtn").click();
+    await expect(page.locator("#toastRegion")).toContainText("Instructions and memory saved.");
+
+    await page.locator("#generationSettingsDetails").evaluate((details) => { details.open = true; });
+    await page.locator("#saveControlsBtn").click();
+    await expect(page.locator("#toastRegion")).toContainText("Generation controls saved.");
+
+    if (viewport.width < 1600) await page.keyboard.press("Escape");
+    await page.locator("#imageInput").setInputFiles({
+      name: "tiny.png",
+      mimeType: "image/png",
+      buffer: Buffer.from([0x89, 0x50, 0x4e, 0x47])
+    });
+    await expect(page.locator("#toastRegion")).toContainText("1 image attached.");
+    await page.getByLabel("Remove attachment").click();
+    await expect(page.locator("#toastRegion")).toContainText("Attachment removed.");
+
+    const audit = await page.evaluate(() => ({
+      overflowX: Math.max(
+        0,
+        document.documentElement.scrollWidth - document.documentElement.clientWidth,
+        document.body.scrollWidth - document.body.clientWidth
+      )
+    }));
+    expect(audit.overflowX).toBe(0);
+  });
+}
+
 test("downloaded index.html launches directly from file mode", async ({ page }) => {
   page.on("dialog", (dialog) => {
     throw new Error(`Unexpected JavaScript dialog: ${dialog.type()}`);

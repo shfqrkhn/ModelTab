@@ -98,7 +98,7 @@
           <div id="intentActions" class="intent-actions" aria-label="Intent shortcuts"></div>
           <div id="attachmentTray" class="attachment-tray" hidden></div>
           <div class="composer">
-            <textarea id="promptInput" rows="3" placeholder="Ask anything. Shift+Enter for a new line."></textarea>
+            <textarea id="promptInput" rows="3" aria-label="Message" placeholder="Ask anything. Shift+Enter for a new line."></textarea>
             <div class="composer-actions">
               <button id="promptLibraryBtn" class="icon-btn" type="button" title="Prompt library" aria-label="Prompt library">⌘</button>
               <button id="saveDraftPromptBtn" class="icon-btn" type="button" title="Save draft as prompt" aria-label="Save draft as prompt">★</button>
@@ -138,6 +138,10 @@
             <label>
               Base URL
               <input id="providerBaseInput" spellcheck="false" />
+            </label>
+            <label>
+              Model
+              <input id="settingsModelInput" list="modelList" spellcheck="false" placeholder="model" />
             </label>
             <div class="button-row">
               <button id="saveProviderBtn" class="primary-btn" type="button">Save Provider</button>
