@@ -640,6 +640,7 @@ const dom = {
   promptSearchInput: $("promptSearchInput"),
   promptTagsInput: $("promptTagsInput"),
   providerBaseInput: $("providerBaseInput"),
+  providerAdvancedDetails: $("providerAdvancedDetails"),
   recentTurnsInput: $("recentTurnsInput"),
   providerHeadersInput: $("providerHeadersInput"),
   providerKeyInput: $("providerKeyInput"),
@@ -1777,6 +1778,7 @@ function renderSelfCheck() {
   if (needsKey && !key) {
     issues.push("API key missing");
     actions.push(["key", "Add Key"]);
+    actions.push(["local", "Use Local"]);
   }
   if (state.workspace.enabled && !workspaceDirectoryHandle) actions.push(["workspace", "Select Folder"]);
   if (provider?.baseUrl && !placeholderBaseUrl && !blockedByPageSecurity && (!needsKey || key)) actions.push(["models", "Fetch Models"]);
@@ -1803,7 +1805,8 @@ function handleNextAction(event) {
   const action = event.target?.dataset?.nextAction;
   if (!action) return;
   if (action === "base") return openSettings(dom.providerBaseInput);
-  if (action === "key") return openSettings(dom.providerKeyInput);
+  if (action === "key") return openSettingsSection(dom.providerAdvancedDetails, dom.providerKeyInput);
+  if (action === "local") return useLocalProvider();
   if (action === "models") return fetchModels();
   if (action === "model") return focusModelInput();
   if (action === "prompt") return focusPromptInput();
@@ -2416,7 +2419,11 @@ function addProvider() {
 }
 
 function addProviderPreset() {
-  const preset = PROVIDER_PRESETS.find((item) => item.id === dom.providerPresetSelect.value);
+  selectProviderPreset(dom.providerPresetSelect.value);
+}
+
+function selectProviderPreset(presetId) {
+  const preset = PROVIDER_PRESETS.find((item) => item.id === presetId);
   if (!preset) return;
   const existing = state.providers.find((provider) => provider.presetId === preset.id || provider.id === preset.defaultId);
   const provider = existing || providerFromPreset(preset, preset.defaultId);
@@ -2425,6 +2432,12 @@ function addProviderPreset() {
   saveState();
   renderAll();
   setStatus(`${preset.name} preset ${existing ? "selected" : "added"}. ${provider.noAuth ? "No API key is required." : "Add your API key to use it."}`);
+}
+
+function useLocalProvider() {
+  selectProviderPreset("lm-studio");
+  openSettings(dom.providerBaseInput);
+  setStatus("LM Studio Local selected. Start LM Studio with CORS enabled, then Fetch Models.");
 }
 
 function ensureMissingProviderPresets(nextState) {

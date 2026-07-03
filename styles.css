@@ -1446,7 +1446,7 @@ select:focus {
 
 @media (max-width: 620px) {
   .next-actions {
-    display: none;
+    justify-content: flex-start;
   }
 }
 
@@ -1587,6 +1587,14 @@ select:focus {
 
   .readiness p {
     margin: 3px 0 0;
+  }
+
+  .next-actions {
+    margin-top: 8px;
+  }
+
+  .next-actions button {
+    flex: 1 1 110px;
   }
 }
 

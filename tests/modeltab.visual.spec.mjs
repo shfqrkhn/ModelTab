@@ -139,6 +139,29 @@ test("mobile drawer and prompt-library affordances are reachable", async ({ page
   await expect(page.locator("#promptSearchInput")).toBeFocused();
 });
 
+test("first-run onboarding opens key field and offers no-key local setup", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(baseUrl);
+  await expect(page.locator("#readinessDetail")).toContainText("API key missing");
+  await expect(page.locator("#nextActions")).toContainText("Add Key");
+  await expect(page.locator("#nextActions")).toContainText("Use Local");
+
+  await page.locator("[data-next-action='key']").click();
+  await expect(page.locator("#settingsPanel")).toHaveClass(/open/);
+  await expect(page.locator("#providerAdvancedDetails")).toHaveJSProperty("open", true);
+  await expect(page.locator("#providerKeyInput")).toBeVisible();
+  await expect(page.locator("#providerKeyInput")).toBeFocused();
+
+  await page.keyboard.press("Escape");
+  await page.locator("[data-next-action='local']").click();
+  await expect(page.locator("#settingsPanel")).toHaveClass(/open/);
+  await expect(page.locator("#providerBaseInput")).toHaveValue("http://localhost:1234/v1");
+  await expect(page.locator("#chatMeta")).toContainText("LM Studio Local");
+  await expect(page.locator("#readinessTitle")).toContainText("Ready");
+  await expect(page.locator("#readinessDetail")).not.toContainText("API key missing");
+  await expect(page.locator("#nextActions")).toContainText("Fetch Models");
+});
+
 test("downloaded index.html launches directly from file mode", async ({ page }) => {
   page.on("dialog", (dialog) => {
     throw new Error(`Unexpected JavaScript dialog: ${dialog.type()}`);
