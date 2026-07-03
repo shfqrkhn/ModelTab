@@ -270,6 +270,11 @@ test("workspace trace reaches provider only after live verified tool output", as
   await expect(page.locator("#workspaceStatus")).toContainText("Connected read-only folder");
   await page.locator("#workspaceListBtn").click();
   await expect(page.locator("#workspaceTrace")).toContainText("README.md");
+  await page.locator("#workspacePathInput").fill("program.exe");
+  await page.locator("#workspaceInspectBtn").click();
+  await expect(page.locator("#workspaceTrace")).toContainText("PE/COFF executable");
+  await expect(page.locator("#workspaceTrace")).toContainText("sha256:");
+  await expect(page.locator("#workspaceTrace")).toContainText("hexdump:");
   await page.keyboard.press("Escape");
 
   await page.getByPlaceholder("Ask anything. Shift+Enter for a new line.").fill("Use the selected workspace trace to summarize files.");
@@ -280,8 +285,76 @@ test("workspace trace reaches provider only after live verified tool output", as
   const serialized = JSON.stringify(body);
   expect(serialized).toContain("Workspace Agent Mode trace");
   expect(serialized).toContain("workspace.list OK");
+  expect(serialized).toContain("workspace.inspect OK");
   expect(serialized).toContain("README.md");
+  expect(serialized).toContain("PE/COFF executable");
   expect(serialized).not.toContain("workspace.select");
+});
+
+test("workspace unsupported browser state is explicit and non-blocking", async ({ page }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(window, "showDirectoryPicker", { configurable: true, value: undefined });
+  });
+
+  await page.goto(appUrl);
+  await page.getByRole("button", { name: "Settings" }).click();
+  await page.locator("#workspaceSettingsDetails").evaluate((details) => { details.open = true; });
+  await expect(page.locator("#workspaceCapability")).toContainText("File System Access API");
+  await expect(page.locator("#workspaceSelectBtn")).toBeDisabled();
+  await expect(page.locator("#promptInput")).toBeVisible();
+});
+
+test("workspace empty folders and large-file limits are visible in traces", async ({ page }) => {
+  await page.addInitScript(() => {
+    const largeFile = new File([new Uint8Array(9 * 1024 * 1024).fill(0x41)], "big.bin", { type: "application/octet-stream" });
+    const largeHandle = { kind: "file", name: "big.bin", getFile: async () => largeFile };
+    const folders = new Map([
+      ["empty-workspace", {
+        kind: "directory",
+        name: "empty-workspace",
+        queryPermission: async () => "granted",
+        requestPermission: async () => "granted",
+        entries: async function* entries() {}
+      }],
+      ["large-workspace", {
+        kind: "directory",
+        name: "large-workspace",
+        queryPermission: async () => "granted",
+        requestPermission: async () => "granted",
+        entries: async function* entries() {
+          yield ["big.bin", largeHandle];
+        },
+        getFileHandle: async (name) => {
+          if (name !== "big.bin") throw new Error("not found");
+          return largeHandle;
+        },
+        getDirectoryHandle: async () => {
+          throw new Error("not found");
+        }
+      }]
+    ]);
+    let nextFolder = "empty-workspace";
+    window.__useLargeWorkspace = () => { nextFolder = "large-workspace"; };
+    window.showDirectoryPicker = async () => folders.get(nextFolder);
+  });
+
+  await page.goto(appUrl);
+  await page.getByRole("button", { name: "Settings" }).click();
+  await page.locator("#workspaceSettingsDetails").evaluate((details) => { details.open = true; });
+  await page.locator("#workspaceEnableInput").check();
+  await page.locator("#workspaceSelectBtn").click();
+  await page.locator("#workspaceListBtn").click();
+  await expect(page.locator("#workspaceTrace")).toContainText("Workspace folder is empty");
+
+  await page.evaluate(() => window.__useLargeWorkspace());
+  await page.locator("#workspaceSelectBtn").click();
+  await page.locator("#workspaceSearchInput").fill("AAAA");
+  await page.locator("#workspaceSearchBtn").click();
+  await expect(page.locator("#workspaceTrace")).toContainText("Skipped 1 oversized file");
+  await page.locator("#workspacePathInput").fill("big.bin");
+  await page.locator("#workspaceInspectBtn").click();
+  await expect(page.locator("#workspaceTrace")).toContainText("chunked sample");
+  await expect(page.locator("#workspaceTrace")).toContainText("sha256: skipped");
 });
 
 test("workspace permission loss disconnects handle and leaves visible failed trace", async ({ page }) => {
