@@ -247,9 +247,13 @@ test("AI Studio Cleaner opens as an integrated ModelTab tool", async ({ page }) 
   await blockExternalRequests(page);
   await page.goto(baseUrl);
   await page.getByRole("link", { name: "Open AI Studio Cleaner in ModelTab" }).click();
+  await expect(page.locator(".modeltab-tool-shell")).toBeVisible();
   await expect(page.locator(".modeltab-tool-bar")).toBeVisible();
   await expect(page.locator(".modeltab-tool-brand")).toContainText("ModelTab");
+  await expect(page.locator(".modeltab-tool-title")).toContainText("AI Studio Cleaner");
+  await expect(page.locator(".tool-context")).toContainText("Clean AI Studio exports locally.");
   await expect(page.getByRole("link", { name: /^Back to ModelTab$/ })).toBeVisible();
+  await expect(page.locator(".tool-intro")).toHaveCount(0);
 
   const cleanerAudit = await page.evaluate(() => ({
     overflowX: Math.max(
@@ -257,13 +261,17 @@ test("AI Studio Cleaner opens as an integrated ModelTab tool", async ({ page }) 
       document.documentElement.scrollWidth - document.documentElement.clientWidth,
       document.body.scrollWidth - document.body.clientWidth
     ),
+    shellHeight: document.querySelector(".modeltab-tool-shell")?.getBoundingClientRect().height || 0,
     toolbarWidth: document.querySelector(".modeltab-tool-bar")?.getBoundingClientRect().width || 0,
+    contextWidth: document.querySelector(".tool-context")?.getBoundingClientRect().width || 0,
     bodyClass: document.body.className,
     title: document.title
   }));
 
   expect(cleanerAudit.overflowX).toBe(0);
+  expect(cleanerAudit.shellHeight).toBeGreaterThanOrEqual(700);
   expect(cleanerAudit.toolbarWidth).toBeGreaterThan(300);
+  expect(cleanerAudit.contextWidth).toBeGreaterThan(300);
   expect(cleanerAudit.bodyClass).toContain("modeltab-tool-body");
   expect(cleanerAudit.title).toContain("ModelTab");
 
@@ -275,7 +283,9 @@ test("AI Studio Cleaner keeps a compact integrated shell on phones", async ({ pa
   await page.setViewportSize({ width: 390, height: 844 });
   await blockExternalRequests(page);
   await page.goto(new URL("tools/ai-studio-cleaner/index.html", baseUrl).href, { waitUntil: "domcontentloaded" });
+  await expect(page.locator(".modeltab-tool-shell")).toBeVisible();
   await expect(page.locator(".modeltab-tool-bar")).toBeVisible();
+  await expect(page.locator(".modeltab-tool-title")).toContainText("AI Studio Cleaner");
   await expect(page.getByRole("link", { name: /^Back to ModelTab$/ })).toBeVisible();
 
   const audit = await page.evaluate(() => {
@@ -291,7 +301,8 @@ test("AI Studio Cleaner keeps a compact integrated shell on phones", async ({ pa
       ),
       toolbarHeight: toolbar?.height || 0,
       toolbarRight: toolbar?.right || 0,
-      backRight: back?.right || 0
+      backRight: back?.right || 0,
+      contextRight: document.querySelector(".tool-context")?.getBoundingClientRect().right || 0
     };
   });
 
@@ -299,6 +310,7 @@ test("AI Studio Cleaner keeps a compact integrated shell on phones", async ({ pa
   expect(audit.toolbarHeight).toBeLessThanOrEqual(64);
   expect(audit.toolbarRight).toBeLessThanOrEqual(391);
   expect(audit.backRight).toBeLessThanOrEqual(391);
+  expect(audit.contextRight).toBeLessThanOrEqual(391);
 });
 
 test("AI Studio Cleaner processes exports without external network", async ({ page }) => {

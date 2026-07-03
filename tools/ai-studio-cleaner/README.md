@@ -7,7 +7,7 @@ Clean Google AI Studio chat exports into readable Markdown.
 - **Live Demo:** [shfqrkhn.github.io/ModelTab/tools/ai-studio-cleaner](https://shfqrkhn.github.io/ModelTab/tools/ai-studio-cleaner/)
 - **Portfolio Role:** AI utility supporting the ModelTab flagship.
 
-AI Studio Cleaner is a lightweight browser tool inside `ModelTab` for parsing exported Google AI Studio conversation JSON files and converting them into clean Markdown, optionally including or hiding model reasoning blocks. It uses ModelTab navigation, includes a direct return path to the chat workspace, and has no third-party runtime dependency.
+AI Studio Cleaner is a native ModelTab workspace tool for parsing exported Google AI Studio conversation JSON files and converting them into clean Markdown, optionally including or hiding model reasoning blocks. It uses the ModelTab header, shared navigation language, direct return path to the chat workspace, and no third-party runtime dependency.
 
 ## Screenshot
 
