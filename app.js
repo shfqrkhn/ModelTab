@@ -1,5 +1,6 @@
 const STORAGE_KEY = "modeltab-state-v1";
 const VAULT_KEY = "modeltab-key-vault-v1";
+const RECOVERY_KEY = "modeltab-state-recovery-v1";
 const LEGACY_STORAGE_KEY = "byok-chat-state-v1";
 const LEGACY_VAULT_KEY = "byok-chat-key-vault-v1";
 const SUPPORTED_IMAGE_TYPES = new Set(["image/png", "image/jpeg", "image/webp", "image/gif"]);
@@ -697,6 +698,7 @@ const dom = {
   wipeDataBtn: $("wipeDataBtn")
 };
 
+let loadStateRecoveryMessage = "";
 let state = loadState();
 let sessionKeys = {};
 let draftAttachments = [];
@@ -721,6 +723,7 @@ function init() {
   registerEvents();
   registerRecoveryHandlers();
   renderAll();
+  if (loadStateRecoveryMessage) setStatus(loadStateRecoveryMessage, true);
   syncOverlayState();
   saveState();
   registerServiceWorker();
@@ -854,9 +857,10 @@ function registerEvents() {
 }
 
 function loadState() {
+  let raw = "";
   try {
     migrateLegacyStorage();
-    const raw = localStorage.getItem(STORAGE_KEY);
+    raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return normalizeState(structuredClone(DEFAULT_STATE));
     const parsed = JSON.parse(raw);
     assertSafeObjectKeys(parsed);
@@ -872,8 +876,23 @@ function loadState() {
       providers: Array.isArray(parsed.providers) && parsed.providers.length ? parsed.providers : structuredClone(DEFAULT_STATE.providers),
       conversations: Array.isArray(parsed.conversations) ? parsed.conversations : []
     });
-  } catch {
+  } catch (error) {
+    quarantineCorruptState(raw, error);
     return normalizeState(structuredClone(DEFAULT_STATE));
+  }
+}
+
+function quarantineCorruptState(raw, error) {
+  if (!raw) return;
+  try {
+    localStorage.setItem(RECOVERY_KEY, JSON.stringify({
+      savedAt: new Date().toISOString(),
+      reason: compact(error?.message || "State could not be loaded.", 200),
+      raw: String(raw).slice(0, MAX_IMPORT_BYTES)
+    }));
+    loadStateRecoveryMessage = "Saved local data could not be loaded. ModelTab restored defaults and kept a local recovery snapshot in this browser.";
+  } catch {
+    loadStateRecoveryMessage = "Saved local data could not be loaded. ModelTab restored defaults.";
   }
 }
 
@@ -1115,12 +1134,15 @@ function saveState() {
   clean.providers.forEach((provider) => delete provider.apiKey);
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(clean));
+    return "ok";
   } catch {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(stripAttachmentPayloads(clean)));
       setStatus("Local storage was full. ModelTab preserved text state and skipped stored image payloads.", true);
+      return "stripped";
     } catch {
       setStatus("Local storage failed. Export data before closing this tab.", true);
+      return "failed";
     }
   }
 }
@@ -3652,6 +3674,7 @@ function wipeLocalData() {
   requireSecondClick("wipe-local-data", "Click wipe again to remove local chats, settings, and encrypted key vault.", () => {
     localStorage.removeItem(STORAGE_KEY);
     localStorage.removeItem(VAULT_KEY);
+    localStorage.removeItem(RECOVERY_KEY);
     state = normalizeState(structuredClone(DEFAULT_STATE));
     sessionKeys = {};
     draftAttachments = [];
@@ -3681,7 +3704,9 @@ async function exportFullBackup() {
   if (!keys) return;
   const keyVault = await encryptJson({ savedAt: new Date().toISOString(), keys }, passphrase);
   downloadJson(exportPayload("full-backup", keyVault), "modeltab-full-backup");
-  setStatus("Full backup exported with encrypted keys. Keep the passphrase separate.");
+  setStatus(Object.keys(keys).length
+    ? "Full backup exported with encrypted keys. Keep the passphrase separate."
+    : "Full backup exported. No session API keys were available to include.");
 }
 
 async function keysForFullBackup(passphrase) {
@@ -3738,7 +3763,7 @@ async function importData() {
       throw new Error("Invalid export.");
     }
     const keyVault = payload.keyVault ? sanitizeVault(payload.keyVault) : null;
-    state = normalizeState({
+    const nextState = normalizeState({
       ...structuredClone(DEFAULT_STATE),
       ...imported,
       providerPresetVersion: presetVersionOf(imported.providerPresetVersion),
@@ -3746,10 +3771,32 @@ async function importData() {
       promptLibrary: Array.isArray(imported.promptLibrary) && imported.promptLibrary.length ? imported.promptLibrary : structuredClone(DEFAULT_STATE.promptLibrary),
       settings: { ...DEFAULT_STATE.settings, ...(imported.settings || {}) }
     });
-    if (keyVault) localStorage.setItem(VAULT_KEY, JSON.stringify(keyVault));
-    saveState();
+    state = nextState;
+    sessionKeys = {};
+    if (keyVault) {
+      try {
+        localStorage.setItem(VAULT_KEY, JSON.stringify(keyVault));
+      } catch {
+        localStorage.removeItem(VAULT_KEY);
+        const saveResult = saveState();
+        renderAll();
+        setStatus(saveResult === "failed"
+          ? "Import loaded in this tab, but local storage and encrypted key vault could not be saved. Export before closing."
+          : "Data imported, but encrypted key vault could not be saved in this browser.", true);
+        return;
+      }
+    } else {
+      localStorage.removeItem(VAULT_KEY);
+    }
+    const saveResult = saveState();
     renderAll();
-    setStatus(keyVault ? "Full backup imported. Unlock the encrypted key vault with its passphrase." : "Data imported without API keys.");
+    if (saveResult === "failed") {
+      setStatus("Import loaded in this tab, but local storage failed. Export before closing.", true);
+    } else if (saveResult === "stripped") {
+      setStatus("Import loaded, but image payloads were skipped because local storage was full.", true);
+    } else {
+      setStatus(keyVault ? "Full backup imported. Unlock the encrypted key vault with its passphrase." : "Data imported without API keys. Existing local key vault and session keys were cleared.");
+    }
   } catch (error) {
     setStatus(`Import failed: ${error.message}`, true);
   } finally {
@@ -3789,7 +3836,12 @@ async function saveVault() {
     setStatus("Passphrase required to save encrypted keys.", true);
     return;
   }
-  const payload = { savedAt: new Date().toISOString(), keys: sanitizeKeyMap(sessionKeys) };
+  const keys = sanitizeKeyMap(sessionKeys);
+  if (!Object.keys(keys).length) {
+    setStatus("No session API keys to save. Enter a provider key first.", true);
+    return;
+  }
+  const payload = { savedAt: new Date().toISOString(), keys };
   localStorage.setItem(VAULT_KEY, JSON.stringify(await encryptJson(payload, passphrase)));
   setStatus("Encrypted key vault saved locally.");
 }

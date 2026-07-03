@@ -56,6 +56,8 @@ AI Studio export cleanup:
 - Keys are session-only unless the user explicitly saves an encrypted local vault.
 - Normal export never includes API keys.
 - Full backup encrypts keys with a user passphrase.
+- Importing a key-free export clears existing session keys and the saved local key vault to prevent stale keys from attaching to restored profiles.
+- If saved local data is corrupt, ModelTab restores safe defaults and keeps a local recovery snapshot in that browser.
 - Provider content is sent only to the selected endpoint.
 - Workspace files are not sent unless the user explicitly attaches files. Workspace Agent Mode can share only visible, successful read-only tool trace snippets from a live selected-folder session; if no verified trace exists, local-file questions fail closed instead of guessing.
 

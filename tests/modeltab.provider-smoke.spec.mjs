@@ -699,3 +699,186 @@ test("import, quota, oversized input, and encrypted backup boundaries fail close
   expect(result.fullBackup).not.toContain("SECRET_KEY");
   expect(result.fullBackup).toContain("PBKDF2-SHA256-210000");
 });
+
+test("data export and encrypted backup round trip restores state without plaintext keys", async ({ page }) => {
+  await page.goto(appUrl);
+  const result = await page.evaluate(async () => {
+    const now = new Date().toISOString();
+    state.providers = [{
+      id: "portable-provider",
+      name: "Portable Provider",
+      type: "openai",
+      baseUrl: "https://example.test/v1",
+      model: "portable-model",
+      extraHeaders: "",
+      noAuth: false,
+      apiKey: "SHOULD_NOT_EXPORT"
+    }];
+    state.activeProviderId = "portable-provider";
+    state.settings.systemPrompt = "Portable system";
+    state.settings.memory = "Portable memory";
+    state.promptLibrary = [{
+      id: "portable-prompt",
+      name: "Portable Prompt",
+      kind: "prompt",
+      tags: "portable",
+      content: "Portable content",
+      favorite: true,
+      createdAt: now,
+      updatedAt: now
+    }];
+    state.folders = [{ id: "folder-a", name: "Folder A", parentId: "", expanded: true, createdAt: now, updatedAt: now }];
+    state.conversations = [{
+      id: "chat-a",
+      title: "Portable Chat",
+      context: "Portable context",
+      folderId: "folder-a",
+      archivedAt: now,
+      createdAt: now,
+      updatedAt: now,
+      messages: [
+        { id: "m1", role: "user", content: "hello", createdAt: now },
+        { id: "m2", role: "assistant", content: "world", provider: "Portable Provider", model: "portable-model", createdAt: now }
+      ]
+    }];
+    state.activeConversationId = "chat-a";
+    state.drafts = { "chat-a": "portable draft" };
+    sessionKeys = { "portable-provider": "SECRET_KEY" };
+    saveState();
+
+    const normal = exportPayload("data");
+    const encryptedVault = await encryptJson({ savedAt: now, keys: sanitizeKeyMap(sessionKeys) }, "passphrase");
+    const backup = exportPayload("full-backup", encryptedVault);
+    const normalText = JSON.stringify(normal);
+    const backupText = JSON.stringify(backup);
+
+    state = normalizeState(structuredClone(DEFAULT_STATE));
+    sessionKeys = {};
+    localStorage.removeItem("modeltab-key-vault-v1");
+    const input = document.querySelector("#importInput");
+    Object.defineProperty(input, "files", {
+      configurable: true,
+      value: [{ size: backupText.length, text: async () => backupText }]
+    });
+    await importData();
+    document.querySelector("#vaultPassphraseInput").value = "passphrase";
+    await unlockVault();
+
+    return {
+      normalHasSecret: normalText.includes("SECRET_KEY") || normalText.includes("SHOULD_NOT_EXPORT"),
+      backupHasPlaintextSecret: backupText.includes("SECRET_KEY") || backupText.includes("SHOULD_NOT_EXPORT"),
+      provider: activeProvider(),
+      systemPrompt: state.settings.systemPrompt,
+      memory: state.settings.memory,
+      promptName: state.promptLibrary.find((item) => item.id === "portable-prompt")?.name,
+      folderName: state.folders.find((item) => item.id === "folder-a")?.name,
+      chat: activeConversation(),
+      draft: state.drafts["chat-a"],
+      unlockedKey: getProviderKey(activeProvider()),
+      status: document.querySelector("#providerStatus").textContent
+    };
+  });
+
+  expect(result.normalHasSecret).toBe(false);
+  expect(result.backupHasPlaintextSecret).toBe(false);
+  expect(result.provider.name).toBe("Portable Provider");
+  expect(result.systemPrompt).toBe("Portable system");
+  expect(result.memory).toBe("Portable memory");
+  expect(result.promptName).toBe("Portable Prompt");
+  expect(result.folderName).toBe("Folder A");
+  expect(result.chat.title).toBe("Portable Chat");
+  expect(result.chat.archivedAt).toBeTruthy();
+  expect(result.draft).toBe("portable draft");
+  expect(result.unlockedKey).toBe("SECRET_KEY");
+  expect(result.status).toContain("Key vault unlocked");
+});
+
+test("key-free import clears stale session keys and saved vault", async ({ page }) => {
+  await page.goto(appUrl);
+  const result = await page.evaluate(async () => {
+    sessionKeys = { "same-provider": "OLD_SECRET" };
+    localStorage.setItem("modeltab-key-vault-v1", JSON.stringify(await encryptJson({ keys: sessionKeys }, "old-pass")));
+    const payload = {
+      app: "modeltab",
+      kind: "data",
+      formatVersion: 2,
+      state: {
+        activeProviderId: "same-provider",
+        providers: [{
+          id: "same-provider",
+          name: "Imported Provider",
+          type: "openai",
+          baseUrl: "https://example.test/v1",
+          model: "imported-model",
+          noAuth: false,
+          apiKey: "MUST_NOT_IMPORT"
+        }],
+        conversations: [{
+          id: "imported-chat",
+          title: "Imported",
+          context: "",
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          messages: []
+        }],
+        activeConversationId: "imported-chat"
+      }
+    };
+    const text = JSON.stringify(payload);
+    const input = document.querySelector("#importInput");
+    Object.defineProperty(input, "files", {
+      configurable: true,
+      value: [{ size: text.length, text: async () => text }]
+    });
+    await importData();
+    return {
+      status: document.querySelector("#providerStatus").textContent,
+      vault: localStorage.getItem("modeltab-key-vault-v1"),
+      key: getProviderKey(activeProvider()),
+      serializedState: localStorage.getItem("modeltab-state-v1")
+    };
+  });
+
+  expect(result.status).toContain("Existing local key vault and session keys were cleared");
+  expect(result.vault).toBeNull();
+  expect(result.key).toBe("");
+  expect(result.serializedState).not.toContain("OLD_SECRET");
+  expect(result.serializedState).not.toContain("MUST_NOT_IMPORT");
+});
+
+test("vault save refuses empty key vault success", async ({ page }) => {
+  await page.goto(appUrl);
+  const result = await page.evaluate(async () => {
+    sessionKeys = {};
+    document.querySelector("#providerKeyInput").value = "";
+    document.querySelector("#vaultPassphraseInput").value = "passphrase";
+    localStorage.removeItem("modeltab-key-vault-v1");
+    await saveVault();
+    return {
+      status: document.querySelector("#providerStatus").textContent,
+      vault: localStorage.getItem("modeltab-key-vault-v1")
+    };
+  });
+
+  expect(result.status).toContain("No session API keys to save");
+  expect(result.vault).toBeNull();
+});
+
+test("corrupt saved state recovers visibly and wipe clears recovery snapshot", async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem("modeltab-state-v1", "{\"providers\":[");
+  });
+  await page.goto(appUrl);
+  await expect(page.locator(".workspace")).toBeVisible();
+  await expect(page.locator("#providerStatus")).toContainText("could not be loaded");
+
+  const recoveryBefore = await page.evaluate(() => JSON.parse(localStorage.getItem("modeltab-state-recovery-v1")));
+  expect(recoveryBefore.raw).toBe("{\"providers\":[");
+
+  const recoveryAfter = await page.evaluate(() => {
+    wipeLocalData();
+    wipeLocalData();
+    return localStorage.getItem("modeltab-state-recovery-v1");
+  });
+  expect(recoveryAfter).toBeNull();
+});
