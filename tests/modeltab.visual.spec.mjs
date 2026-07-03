@@ -139,6 +139,35 @@ test("mobile drawer and prompt-library affordances are reachable", async ({ page
   await expect(page.locator("#promptSearchInput")).toBeFocused();
 });
 
+test("keyboard focus enters mobile overlays and returns to triggers", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(baseUrl);
+
+  await page.locator("#sidebarToggle").focus();
+  await page.keyboard.press("Enter");
+  await expect(page.locator(".sidebar")).toHaveClass(/open/);
+  await expect(page.locator("#newChatBtn")).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(page.locator(".sidebar")).not.toHaveClass(/open/);
+  await expect(page.locator("#sidebarToggle")).toBeFocused();
+
+  await page.locator("#settingsBtn").focus();
+  await page.keyboard.press("Enter");
+  await expect(page.locator("#settingsPanel")).toHaveClass(/open/);
+  await expect(page.locator("#settingsProviderSelect")).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(page.locator("#settingsPanel")).not.toHaveClass(/open/);
+  await expect(page.locator("#settingsBtn")).toBeFocused();
+});
+
+test("chat tree controls expose item-specific accessible names", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto(baseUrl);
+  await expect(page.getByLabel("Open chat New chat")).toBeVisible();
+  await page.getByLabel("Chat controls for New chat").click();
+  await expect(page.getByLabel("Move New chat")).toBeVisible();
+});
+
 test("first-run onboarding opens key field and offers no-key local setup", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(baseUrl);

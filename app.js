@@ -762,7 +762,7 @@ function registerEvents() {
     renderConversationList();
   });
   dom.settingsBtn.addEventListener("click", toggleSettingsPanel);
-  dom.closeSettingsBtn.addEventListener("click", () => closeSettings({ collapse: true }));
+  dom.closeSettingsBtn.addEventListener("click", () => closeSettings({ collapse: true, restoreFocus: true }));
   dom.sidebarToggle.addEventListener("click", toggleSidebar);
   document.addEventListener("pointerdown", closeOverlayFromPointer);
   dom.sendBtn.addEventListener("click", sendPrompt);
@@ -1437,7 +1437,7 @@ function renderFolderNode(folder, query, depth) {
   return `<section class="conversation-folder" data-folder-node="${escapeAttr(folder.id)}">
     <div class="folder-row ${state.activeFolderId === folder.id ? "active" : ""} ${depthClass(depth)}">
       ${renderButton({ className: "folder-toggle", attrs: { "data-toggle-folder": folder.id, "aria-label": `${expanded ? "Collapse" : "Expand"} ${folder.name}` }, html: expanded ? "▾" : "▸" })}
-      ${renderButton({ className: "folder-select", attrs: { "data-select-folder": folder.id }, html: `<span>${escapeHtml(folder.name)}</span> <span class="conversation-folder-count">${visibleCount}</span>` })}
+      ${renderButton({ className: "folder-select", attrs: { "data-select-folder": folder.id, "aria-label": `Open folder ${folder.name}` }, html: `<span>${escapeHtml(folder.name)}</span> <span class="conversation-folder-count">${visibleCount}</span>` })}
       ${renderButton({ className: "folder-action", attrs: { "data-new-subfolder": folder.id, "aria-label": `New subfolder in ${folder.name}` }, html: "+" })}
       ${renderButton({ className: "folder-action", attrs: { "data-delete-folder": folder.id, "aria-label": `Delete folder ${folder.name}` }, html: "×" })}
     </div>
@@ -1460,19 +1460,20 @@ function renderChatsForFolder(folderId, query, depth) {
 
 function renderConversationItem(chat, depth) {
   const last = chat.messages.at(-1)?.content || "No messages yet";
+  const title = chat.title || "Untitled chat";
   return `<article class="conversation-item ${chat.id === state.activeConversationId ? "active" : ""} ${depthClass(depth)}">
     ${renderButton({
       className: "conversation-open",
-      attrs: { "data-open-chat": chat.id },
-      html: `<strong>${escapeHtml(chat.title || "Untitled chat")}</strong><span>${escapeHtml(compact(last, 92))}</span>`
+      attrs: { "data-open-chat": chat.id, "aria-label": `Open chat ${title}` },
+      html: `<strong>${escapeHtml(title)}</strong><span>${escapeHtml(compact(last, 92))}</span>`
     })}
     <details class="conversation-controls">
-      <summary aria-label="Chat controls">⋯</summary>
+      <summary aria-label="Chat controls for ${escapeAttr(title)}">⋯</summary>
       <div class="conversation-menu">
         ${renderButton({ className: "small-btn", attrs: { "data-duplicate-chat": chat.id }, label: "Duplicate" })}
         ${renderButton({ className: "small-btn", attrs: { "data-archive-chat": chat.id }, label: chat.archivedAt ? "Restore" : "Archive" })}
         ${renderButton({ className: "danger-btn", attrs: { "data-delete-chat": chat.id }, label: "Delete" })}
-        <select data-move-chat="${escapeAttr(chat.id)}" aria-label="Move chat">
+        <select data-move-chat="${escapeAttr(chat.id)}" aria-label="Move ${escapeAttr(title)}">
           ${folderOptions(chat.folderId || "")}
         </select>
       </div>
@@ -2163,12 +2164,12 @@ function formatWorkspaceInspection(analysis) {
   ].filter(Boolean).join("\n");
 }
 
-function openSettings(focusTarget) {
+function openSettings(focusTarget = dom.settingsProviderSelect) {
   state.settingsCollapsed = false;
   dom.settingsPanel.classList.add("open");
   saveState();
   syncOverlayState();
-  if (focusTarget) setTimeout(() => focusTarget.focus(), 0);
+  focusSoon(focusTarget);
 }
 
 function openSettingsSection(details, focusTarget) {
@@ -2180,34 +2181,43 @@ function openSettingsSection(details, focusTarget) {
   }, 0);
 }
 
-function closeSettings({ collapse = false } = {}) {
+function closeSettings({ collapse = false, restoreFocus = false } = {}) {
   if (collapse) {
     state.settingsCollapsed = true;
     saveState();
   }
   dom.settingsPanel.classList.remove("open");
   syncOverlayState();
+  if (restoreFocus) focusSoon(dom.settingsBtn);
 }
 
 function toggleSettingsPanel() {
   if (SETTINGS_OVERLAY_MEDIA.matches) {
     if (dom.settingsPanel.classList.contains("open")) {
       closeSettings({ collapse: true });
+      focusSoon(dom.settingsBtn);
     } else {
       openSettings();
     }
     return;
   }
+  const opening = state.settingsCollapsed;
   state.settingsCollapsed = !state.settingsCollapsed;
   dom.settingsPanel.classList.remove("open");
   saveState();
   syncOverlayState();
+  if (opening) focusSoon(dom.settingsProviderSelect);
 }
 
 function toggleSidebar() {
   if (SIDEBAR_OVERLAY_MEDIA.matches) {
     state.sidebarCollapsed = false;
+    const opening = !dom.sidebar.classList.contains("open");
     dom.sidebar.classList.toggle("open");
+    saveState();
+    syncOverlayState();
+    focusSoon(opening ? dom.newChatBtn : dom.sidebarToggle);
+    return;
   } else {
     state.sidebarCollapsed = !state.sidebarCollapsed;
     dom.sidebar.classList.remove("open");
@@ -2216,10 +2226,18 @@ function toggleSidebar() {
   syncOverlayState();
 }
 
-function closeOverlays() {
+function closeOverlays({ restoreFocus = false } = {}) {
+  const settingsOpen = dom.settingsPanel.classList.contains("open");
+  const sidebarOpen = dom.sidebar.classList.contains("open");
+  const activeInSettings = dom.settingsPanel.contains(document.activeElement);
+  const activeInSidebar = dom.sidebar.contains(document.activeElement);
   closeSettings();
   closeMobileSidebar();
   syncOverlayState();
+  if (restoreFocus) {
+    if (activeInSettings || settingsOpen) focusSoon(dom.settingsBtn);
+    else if (activeInSidebar || sidebarOpen) focusSoon(dom.sidebarToggle);
+  }
 }
 
 function closeOverlayFromPointer(event) {
@@ -2277,9 +2295,17 @@ function focusPromptInput() {
   dom.promptInput.focus();
 }
 
+function focusSoon(target) {
+  if (!target) return;
+  setTimeout(() => {
+    if (!document.contains(target) || target.closest?.("[aria-hidden='true']")) return;
+    target.focus({ preventScroll: true });
+  }, 0);
+}
+
 function handleGlobalKeydown(event) {
   const modifier = event.ctrlKey || event.metaKey;
-  if (event.key === "Escape") closeOverlays();
+  if (event.key === "Escape") closeOverlays({ restoreFocus: true });
   if (modifier && event.key.toLowerCase() === "k") {
     event.preventDefault();
     dom.searchInput.focus();
