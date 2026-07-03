@@ -1,4 +1,4 @@
-const CACHE_NAME = "modeltab-shell-v37";
+const CACHE_NAME = "modeltab-shell-v38";
 const SHELL = [
   "./",
   "./index.html",
@@ -6,7 +6,11 @@ const SHELL = [
   "./app.js",
   "./workspace-worker.js",
   "./manifest.webmanifest",
-  "./icons/icon.svg"
+  "./icons/icon.svg",
+  "./icons/icon-192.png",
+  "./icons/icon-512.png",
+  "./icons/apple-touch-icon.png",
+  "./screenshot.png"
 ];
 
 self.addEventListener("install", (event) => {

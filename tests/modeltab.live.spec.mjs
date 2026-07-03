@@ -54,3 +54,41 @@ for (const viewport of [
     expect(consoleIssues).toEqual([]);
   });
 }
+
+test("live GitHub Pages PWA metadata and preview assets are deployed", async ({ request }) => {
+  const manifestResponse = await request.get(new URL("manifest.webmanifest", liveUrl).href);
+  expect(manifestResponse.status()).toBe(200);
+  const manifest = await manifestResponse.json();
+
+  expect(manifest.id).toBe("./");
+  expect(manifest.start_url).toBe("./");
+  expect(manifest.scope).toBe("./");
+  expect(manifest.categories).toEqual(expect.arrayContaining(["productivity", "utilities", "developer"]));
+  expect(manifest.icons.map((icon) => icon.src)).toEqual(expect.arrayContaining(["./icons/icon.svg", "./icons/icon-192.png", "./icons/icon-512.png"]));
+  expect(manifest.screenshots.map((screenshot) => screenshot.src)).toContain("./screenshot.png");
+
+  for (const ref of [
+    "./icons/icon.svg",
+    "./icons/icon-192.png",
+    "./icons/icon-512.png",
+    "./icons/apple-touch-icon.png",
+    "./screenshot.png"
+  ]) {
+    const response = await request.get(new URL(ref, liveUrl).href);
+    expect(response.status()).toBe(200);
+    expect((await response.body()).length).toBeGreaterThan(500);
+  }
+
+  const htmlResponse = await request.get(liveUrl);
+  expect(htmlResponse.status()).toBe(200);
+  const html = await htmlResponse.text();
+  expect(html).toContain('rel="apple-touch-icon"');
+  expect(html).toContain('name="application-name"');
+
+  const serviceWorkerResponse = await request.get(new URL("service-worker.js", liveUrl).href);
+  expect(serviceWorkerResponse.status()).toBe(200);
+  const serviceWorker = await serviceWorkerResponse.text();
+  expect(serviceWorker).toContain("modeltab-shell-v38");
+  expect(serviceWorker).toContain("./icons/icon-512.png");
+  expect(serviceWorker).toContain("./screenshot.png");
+});

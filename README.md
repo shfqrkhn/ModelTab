@@ -10,7 +10,7 @@ Every model. One tab.
 - **Portfolio Role:** Primary AI application.
 - **License:** MIT
 
-ModelTab is a no-install BYOK AI chat PWA for OpenAI-compatible endpoints and native Gemini API keys. It gives users a browser-based alternative to desktop AI chat tools: bring an endpoint, bring a key, and use the provider directly.
+ModelTab is a no-install, local-first BYOK AI chat PWA for OpenAI-compatible endpoints, local/LAN LLM servers, and native Gemini API keys. It gives users a browser-based alternative to desktop AI chat tools: bring an endpoint, bring a key when needed, and use the provider directly from the browser.
 
 `AI-Studio-Cleaner` now lives inside this repository at `tools/ai-studio-cleaner/` as the focused utility for cleaning Google AI Studio exports into readable Markdown.
 
@@ -20,7 +20,7 @@ ModelTab is a no-install BYOK AI chat PWA for OpenAI-compatible endpoints and na
 
 ## Why This Exists
 
-Many AI chat tools require a desktop install, a hosted account, or a single provider. ModelTab keeps the workflow portable: static files, direct provider calls, local settings, and no bundled backend.
+Many AI chat tools require a desktop install, a hosted account, or a single provider. ModelTab keeps the workflow portable: static files, direct provider calls, local settings, and no bundled backend. It can run from GitHub Pages, a self-hosted static folder, or an extracted zip opened through `index.html`.
 
 ## What It Does
 
@@ -33,16 +33,16 @@ Many AI chat tools require a desktop install, a hosted account, or a single prov
 
 ## Quick Start
 
-1. Open the live demo or download the repository and open `index.html`.
-2. Select or add a provider profile.
-3. Enter base URL, model, and API key if the endpoint requires one.
+1. Open the live demo, self-host the static files, or download the repository zip and open `index.html`.
+2. Pick a preset for an OpenAI-compatible cloud endpoint, native Gemini, or a local/LAN server.
+3. Enter base URL, model, and API key only if the endpoint requires one. Direct browser calls require the selected endpoint to allow browser CORS requests; some cloud providers block static-site browser calls.
 4. For LM Studio browser use, start the local server with CORS enabled:
 
    ```powershell
    lms server start --cors --port 1234
    ```
 
-5. Chat, save prompts, organize conversations, and export or back up local data.
+5. Chat, save prompts, organize conversations, install the PWA on HTTPS/localhost when useful, and export or back up local data.
 
 AI Studio export cleanup:
 

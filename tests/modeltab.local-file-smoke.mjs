@@ -25,7 +25,8 @@ const assetRefs = [
   ...[...html.matchAll(/<script\b[^>]*src="([^"]+)"/g)].map((match) => match[1]),
   ...[...html.matchAll(/<link\b(?=[^>]*\brel="(?:stylesheet|icon|apple-touch-icon)")(?=[^>]*\bhref="([^"]+)")[^>]*>/g)].map((match) => match[1]),
   ...[...serviceWorker.matchAll(/"(\.\/[^"]+)"/g)].map((match) => match[1]),
-  ...(manifest.icons || []).map((icon) => icon.src)
+  ...(manifest.icons || []).map((icon) => icon.src),
+  ...(manifest.screenshots || []).map((screenshot) => screenshot.src)
 ]
   .filter((ref) => ref && !ref.startsWith("data:"));
 
@@ -42,6 +43,9 @@ check("runtime has no bundled remote scripts", !/<script\b[^>]*src="https?:\/\//
 check("runtime has no bundled remote styles", !/<link\b(?=[^>]*\brel="stylesheet")(?=[^>]*\bhref="https?:\/\/)[^>]*>/i.test(html));
 check("PWA start URL stays relative", manifest.start_url === "./");
 check("PWA scope stays relative", manifest.scope === "./");
+check("PWA id stays relative for static/local portability", manifest.id === "./");
+check("PWA manifest includes local install preview metadata", Array.isArray(manifest.categories) && manifest.categories.length >= 3 && Array.isArray(manifest.screenshots) && manifest.screenshots.some((screenshot) => screenshot.src === "./screenshot.png"));
+check("PWA install icons include png and iOS touch assets", manifest.icons.some((icon) => icon.src === "./icons/icon-192.png") && manifest.icons.some((icon) => icon.src === "./icons/icon-512.png") && html.includes("./icons/apple-touch-icon.png"));
 check("service worker shell excludes provider/API URLs", !/api\.openai|generativelanguage|localhost:1234|openrouter/i.test(serviceWorker));
 
 if (failures.length) {

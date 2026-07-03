@@ -59,12 +59,20 @@ for (const doc of docs) {
 
 check("root screenshot exists for README and social preview", existsNonEmpty("screenshot.png"));
 check("AI Studio Cleaner screenshot exists", existsNonEmpty("tools/ai-studio-cleaner/screenshot.png"));
+check("PWA preview and install icons exist", ["icons/icon.svg", "icons/icon-192.png", "icons/icon-512.png", "icons/apple-touch-icon.png", "screenshot.png"].every(existsNonEmpty));
 check("root LICENSE exists", existsNonEmpty("LICENSE"));
 check("README exposes Sponsor, live demo, bundled cleaner, and license", [
   "https://github.com/sponsors/shfqrkhn?o=esb",
   "https://shfqrkhn.github.io/ModelTab/",
   "https://shfqrkhn.github.io/ModelTab/tools/ai-studio-cleaner/",
   "MIT"
+].every((needle) => read("README.md").includes(needle)));
+check("README covers local zip, PWA install, CORS, and local/LAN setup paths", [
+  "download the repository zip",
+  "open `index.html`",
+  "Direct browser calls require",
+  "local/LAN server",
+  "install the PWA"
 ].every((needle) => read("README.md").includes(needle)));
 
 const failed = checks.filter((item) => !item.ok);
