@@ -48,6 +48,8 @@ test.beforeAll(async () => {
       return;
     }
     if (request.url === "/v1/chat/completions" && request.method === "POST") {
+      const body = await requestBody(request);
+      providerRequests.push({ kind: "openai", headers: request.headers, body: JSON.parse(body) });
       response.writeHead(200, { "content-type": "application/json" });
       response.end(JSON.stringify({ choices: [{ message: { content: "smoke-ok" } }] }));
       return;
@@ -134,6 +136,177 @@ test("local OpenAI-compatible provider can fetch models and complete a chat", as
   await page.getByPlaceholder("Ask anything. Shift+Enter for a new line.").fill("hello");
   await page.getByRole("button", { name: "Send" }).click();
   await expect(page.locator(".message.assistant .markdown")).toContainText("smoke-ok");
+});
+
+test("workspace intent fails closed when only stale persisted trace exists", async ({ page }) => {
+  providerRequests.length = 0;
+  await page.addInitScript(({ providerUrl }) => {
+    localStorage.setItem("modeltab-state-v1", JSON.stringify({
+      activeProviderId: "workspace-provider",
+      providers: [{
+        id: "workspace-provider",
+        name: "Workspace Provider",
+        type: "openai",
+        baseUrl: providerUrl,
+        model: "smoke-model",
+        extraHeaders: "",
+        noAuth: true
+      }],
+      workspace: {
+        enabled: true,
+        shareTrace: true,
+        folderName: "stale-folder",
+        trace: [{
+          id: "stale-trace",
+          createdAt: new Date().toISOString(),
+          tool: "workspace.list",
+          input: "stale-folder",
+          output: "file README.md",
+          ok: true
+        }]
+      },
+      settings: {
+        stream: false,
+        autoTrim: true,
+        recentTurns: 3,
+        maxInputTokens: 6000,
+        maxTokens: 256,
+        temperature: 0.2,
+        topP: 1
+      },
+      conversations: [{
+        id: "chat-workspace-stale",
+        title: "Workspace stale",
+        context: "",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        messages: []
+      }],
+      activeConversationId: "chat-workspace-stale"
+    }));
+  }, { providerUrl });
+
+  await page.goto(appUrl);
+  await page.getByPlaceholder("Ask anything. Shift+Enter for a new line.").fill("List files in my local workspace.");
+  await page.getByRole("button", { name: "Send" }).click();
+  await expect(page.locator(".message.assistant.error .markdown")).toContainText("no live workspace folder");
+  expect(providerRequests.filter((item) => item.kind === "openai")).toHaveLength(0);
+});
+
+test("workspace trace reaches provider only after live verified tool output", async ({ page }) => {
+  providerRequests.length = 0;
+  await page.addInitScript(({ providerUrl }) => {
+    const textFile = new File(["hello workspace\nuseful symbol\n"], "README.md", { type: "text/markdown" });
+    const binaryFile = new File([new Uint8Array([0x4d, 0x5a, 0x00, 0x02, 0xff])], "program.exe", { type: "application/octet-stream" });
+    const files = new Map([
+      ["README.md", textFile],
+      ["program.exe", binaryFile]
+    ]);
+    const handleFor = (name) => ({
+      kind: "file",
+      name,
+      getFile: async () => files.get(name)
+    });
+    const directory = {
+      kind: "directory",
+      name: "fixture-workspace",
+      queryPermission: async () => "granted",
+      requestPermission: async () => "granted",
+      entries: async function* entries() {
+        yield ["README.md", handleFor("README.md")];
+        yield ["program.exe", handleFor("program.exe")];
+      },
+      getFileHandle: async (name) => {
+        if (!files.has(name)) throw new Error("not found");
+        return handleFor(name);
+      },
+      getDirectoryHandle: async () => {
+        throw new Error("not found");
+      }
+    };
+    window.showDirectoryPicker = async () => directory;
+    localStorage.setItem("modeltab-state-v1", JSON.stringify({
+      activeProviderId: "workspace-provider",
+      providers: [{
+        id: "workspace-provider",
+        name: "Workspace Provider",
+        type: "openai",
+        baseUrl: providerUrl,
+        model: "smoke-model",
+        extraHeaders: "",
+        noAuth: true
+      }],
+      workspace: {
+        enabled: true,
+        shareTrace: true,
+        folderName: "",
+        trace: []
+      },
+      settings: {
+        stream: false,
+        autoTrim: true,
+        recentTurns: 3,
+        maxInputTokens: 6000,
+        maxTokens: 256,
+        temperature: 0.2,
+        topP: 1
+      },
+      conversations: [{
+        id: "chat-workspace-live",
+        title: "Workspace live",
+        context: "",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        messages: []
+      }],
+      activeConversationId: "chat-workspace-live"
+    }));
+  }, { providerUrl });
+
+  await page.goto(appUrl);
+  await page.getByRole("button", { name: "Settings" }).click();
+  await page.locator("#workspaceSettingsDetails").evaluate((details) => { details.open = true; });
+  await page.locator("#workspaceSelectBtn").click();
+  await expect(page.locator("#workspaceStatus")).toContainText("Connected read-only folder");
+  await page.locator("#workspaceListBtn").click();
+  await expect(page.locator("#workspaceTrace")).toContainText("README.md");
+  await page.keyboard.press("Escape");
+
+  await page.getByPlaceholder("Ask anything. Shift+Enter for a new line.").fill("Use the selected workspace trace to summarize files.");
+  await page.getByRole("button", { name: "Send" }).click();
+  await expect(page.locator(".message.assistant .markdown")).toContainText("smoke-ok");
+
+  const body = providerRequests.filter((item) => item.kind === "openai").at(-1).body;
+  const serialized = JSON.stringify(body);
+  expect(serialized).toContain("Workspace Agent Mode trace");
+  expect(serialized).toContain("workspace.list OK");
+  expect(serialized).toContain("README.md");
+  expect(serialized).not.toContain("workspace.select");
+});
+
+test("workspace permission loss disconnects handle and leaves visible failed trace", async ({ page }) => {
+  await page.addInitScript(() => {
+    const directory = {
+      kind: "directory",
+      name: "revoked-workspace",
+      queryPermission: async () => "denied",
+      requestPermission: async () => "denied",
+      entries: async function* entries() {
+        yield ["README.md", { kind: "file", name: "README.md", getFile: async () => new File(["x"], "README.md") }];
+      }
+    };
+    window.showDirectoryPicker = async () => directory;
+  });
+
+  await page.goto(appUrl);
+  await page.getByRole("button", { name: "Settings" }).click();
+  await page.locator("#workspaceSettingsDetails").evaluate((details) => { details.open = true; });
+  await page.locator("#workspaceEnableInput").check();
+  await page.locator("#workspaceSelectBtn").click();
+  await expect(page.locator("#workspaceStatus")).toContainText("Connected read-only folder");
+  await page.locator("#workspaceListBtn").click();
+  await expect(page.locator("#workspaceTrace")).toContainText("Workspace read permission is not granted");
+  await expect(page.locator("#workspaceStatus")).toContainText("remembered by name only");
 });
 
 test("model fetch confirms connection and selects first missing model", async ({ page }) => {

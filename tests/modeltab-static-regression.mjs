@@ -39,7 +39,7 @@ check("provider key safety and reserved header guardrails exist", includesAll(fi
 check("normal export excludes keys while full backup encrypts them", includesAll(files.app, ["Data exported without API keys", "Full backup exported with encrypted keys", "AES-GCM", "PBKDF2", "keyVault"]));
 check("prompt, memory, and context surfaces exist", includesAll(files.html, ["systemPromptInput", "memoryInput", "contextInput", "promptLibrarySettingsDetails", "promptLibraryBtn"]));
 check("tree chat organization and controls exist", includesAll(files.app, ["normalizeFolders", "renderFolderTree", "data-duplicate-chat", "data-archive-chat", "data-move-chat"]));
-check("workspace agent is explicit, read-only, and trace-visible", includesAll(files.app, ["showDirectoryPicker({ mode: \"read\" })", "Workspace Agent Mode", "workspaceTraceForModel", "no raw file bytes", "workspace.select"]));
+check("workspace agent is explicit, read-only, trace-visible, and fail-closed", includesAll(files.app, ["showDirectoryPicker({ mode: \"read\" })", "Workspace Agent Mode", "workspaceTraceForModel", "WORKSPACE_ALLOWED_TOOLS", "Workspace Agent Mode will not guess", "no raw file bytes", "workspace.select"]));
 check("workspace worker inspects binaries in a worker with wasm signal", includesAll(files.worker, ["detectFormat", "PE/COFF", "ELF", "Mach-O", "WebAssembly.validate", "hexdump", "sha256"]));
 check("service worker caches only app shell assets", includesAll(files.serviceWorker, ["SHELL", "url.origin !== self.location.origin", "event.request.method !== \"GET\"", "caches.open(CACHE_NAME)"]));
 check("PWA manifest remains minimal and local-first", includesAll(files.manifest, ["\"display\": \"standalone\"", "\"start_url\": \"./\"", "\"scope\": \"./\"", "\"icons\""]));

@@ -57,7 +57,7 @@ AI Studio export cleanup:
 - Normal export never includes API keys.
 - Full backup encrypts keys with a user passphrase.
 - Provider content is sent only to the selected endpoint.
-- Workspace files are not sent unless the user explicitly shares visible trace snippets or attaches files.
+- Workspace files are not sent unless the user explicitly attaches files. Workspace Agent Mode can share only visible, successful read-only tool trace snippets from a live selected-folder session; if no verified trace exists, local-file questions fail closed instead of guessing.
 
 ## Local And Static Hosting
 

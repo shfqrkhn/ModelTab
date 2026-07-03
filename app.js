@@ -15,6 +15,8 @@ const PROVIDER_PRESET_VERSION = 6;
 const PROMPT_LIBRARY_VERSION = 2;
 const WORKSPACE_TRACE_LIMIT = 24;
 const WORKSPACE_MODEL_TRACE_LIMIT = 8;
+const WORKSPACE_ALLOWED_TOOLS = new Set(["list", "search", "inspect"]);
+const WORKSPACE_MODEL_TRACE_TOOLS = new Set(["workspace.list", "workspace.search", "workspace.inspect"]);
 const WORKSPACE_MAX_LIST_ENTRIES = 220;
 const WORKSPACE_MAX_LIST_DEPTH = 5;
 const WORKSPACE_MAX_SEARCH_RESULTS = 32;
@@ -23,6 +25,7 @@ const WORKSPACE_INSPECT_CHUNK_BYTES = 1024 * 1024;
 const WORKSPACE_MAX_INSPECT_BYTES = WORKSPACE_INSPECT_CHUNK_BYTES * 2;
 const WORKSPACE_HASH_CHUNK_BYTES = 1024 * 1024;
 const WORKSPACE_MAX_HASH_BYTES = 8 * 1024 * 1024;
+const WORKSPACE_INTENT_PATTERN = /\b(workspace|selected folder|project folder|local folder|local files?|codebase|repo|repository)\b|\b(my|this|selected|current|local)\s+(folder|directory|files?|project|workspace|codebase|repo|repository)\b|\b(list|read|search|inspect|analy[sz]e|hash|hexdump|strings)\s+(the\s+)?(files?|folder|directory|workspace|project|repo|repository|binary)\b|(?:^|\s)[\w.-]+\/[\w./-]+\b/i;
 const UNSAFE_OBJECT_KEYS = new Set(["__proto__", "prototype", "constructor"]);
 const RESERVED_EXTRA_HEADERS = new Set([
   "authorization",
@@ -1891,6 +1894,12 @@ function filterWorkspaceTrace() {
 }
 
 async function runWorkspaceTool(tool) {
+  if (!WORKSPACE_ALLOWED_TOOLS.has(tool)) {
+    const message = "Workspace tool is not allowed.";
+    addWorkspaceTrace("workspace.blocked", String(tool || "unknown"), message, false);
+    setStatus(message, true);
+    return;
+  }
   if (!workspaceReady()) {
     setStatus("Select a workspace folder before running tools.", true);
     openSettingsSection(dom.workspaceSettingsDetails, dom.workspaceSelectBtn);
@@ -1898,6 +1907,7 @@ async function runWorkspaceTool(tool) {
   }
   try {
     setWorkspaceBusy(true);
+    await ensureWorkspaceReadPermission({ prompt: true });
     if (tool === "list") {
       const output = await listWorkspaceFiles();
       addWorkspaceTrace("workspace.list", workspaceRootLabel(), output);
@@ -1958,6 +1968,27 @@ function workspaceRootLabel() {
   return workspaceDirectoryHandle?.name || state.workspace.folderName || "selected folder";
 }
 
+async function ensureWorkspaceReadPermission({ prompt = false } = {}) {
+  if (!workspaceDirectoryHandle) throw new Error("No live workspace folder is connected. Select Folder again.");
+  let permission = await workspaceReadPermissionState();
+  try {
+    if (permission !== "granted" && prompt && typeof workspaceDirectoryHandle.requestPermission === "function") {
+      permission = await workspaceDirectoryHandle.requestPermission({ mode: "read" });
+    }
+  } catch (error) {
+    permission = "denied";
+  }
+  if (permission !== "granted") {
+    disconnectWorkspaceHandle();
+    throw new Error("Workspace read permission is not granted. Select Folder again before running tools.");
+  }
+}
+
+function disconnectWorkspaceHandle() {
+  workspaceDirectoryHandle = null;
+  workspaceFileEntries = [];
+}
+
 async function listWorkspaceFiles() {
   const entries = [];
   const fileEntries = [];
@@ -1975,13 +2006,36 @@ async function listWorkspaceFiles() {
 
 async function searchWorkspace(query) {
   const results = [];
+  let searchedTextFiles = 0;
+  let skippedLargeFiles = 0;
+  let skippedBinaryFiles = 0;
+  let skippedUnreadableFiles = 0;
   const needle = query.toLowerCase();
   await walkWorkspaceDirectory(workspaceDirectoryHandle, "", 0, async ({ path: entryPath, handle }) => {
     if (handle.kind !== "file" || results.length >= WORKSPACE_MAX_SEARCH_RESULTS) return results.length < WORKSPACE_MAX_SEARCH_RESULTS;
-    const file = await handle.getFile();
-    if (file.size > WORKSPACE_MAX_SEARCH_FILE_BYTES) return true;
-    const bytes = new Uint8Array(await file.arrayBuffer());
-    if (!isProbablyText(bytes)) return true;
+    let file;
+    try {
+      file = await handle.getFile();
+    } catch {
+      skippedUnreadableFiles += 1;
+      return true;
+    }
+    if (file.size > WORKSPACE_MAX_SEARCH_FILE_BYTES) {
+      skippedLargeFiles += 1;
+      return true;
+    }
+    let bytes;
+    try {
+      bytes = new Uint8Array(await file.arrayBuffer());
+    } catch {
+      skippedUnreadableFiles += 1;
+      return true;
+    }
+    if (!isProbablyText(bytes)) {
+      skippedBinaryFiles += 1;
+      return true;
+    }
+    searchedTextFiles += 1;
     const text = new TextDecoder().decode(bytes);
     const lines = text.split(/\r?\n/);
     for (let index = 0; index < lines.length && results.length < WORKSPACE_MAX_SEARCH_RESULTS; index += 1) {
@@ -1992,7 +2046,13 @@ async function searchWorkspace(query) {
     return results.length < WORKSPACE_MAX_SEARCH_RESULTS;
   });
   const truncated = results.length >= WORKSPACE_MAX_SEARCH_RESULTS ? `\n...truncated at ${WORKSPACE_MAX_SEARCH_RESULTS} matches.` : "";
-  return results.length ? `${results.join("\n")}${truncated}` : `No text matches for "${query}" within read limits.`;
+  const summary = [
+    `Searched ${searchedTextFiles} text file${searchedTextFiles === 1 ? "" : "s"} within the ${formatBytes(WORKSPACE_MAX_SEARCH_FILE_BYTES)} per-file read limit.`,
+    skippedLargeFiles ? `Skipped ${skippedLargeFiles} oversized file${skippedLargeFiles === 1 ? "" : "s"}.` : "",
+    skippedBinaryFiles ? `Skipped ${skippedBinaryFiles} likely-binary file${skippedBinaryFiles === 1 ? "" : "s"}.` : "",
+    skippedUnreadableFiles ? `Skipped ${skippedUnreadableFiles} unreadable file${skippedUnreadableFiles === 1 ? "" : "s"}.` : ""
+  ].filter(Boolean).join(" ");
+  return results.length ? `${results.join("\n")}${truncated}\n\n${summary}` : `No text matches for "${query}" within read limits.\n\n${summary}`;
 }
 
 async function inspectWorkspaceFile(filePath) {
@@ -2936,6 +2996,21 @@ async function sendPrompt() {
   delete state.drafts[chat.id];
   draftAttachments = [];
   closePromptQuickPanel();
+  const workspaceBlock = await workspaceFailClosedReason(text);
+  if (workspaceBlock) {
+    chat.messages.push({
+      id: uid(),
+      role: "assistant",
+      content: workspaceBlock,
+      error: true,
+      createdAt: new Date().toISOString()
+    });
+    chat.updatedAt = new Date().toISOString();
+    saveState();
+    renderAll();
+    setStatus("Workspace evidence required before answering about local files.", true);
+    return;
+  }
   await runAssistant(chat);
 }
 
@@ -3189,12 +3264,67 @@ function combinedSystem(chat) {
 }
 
 function workspaceTraceForModel() {
-  if (!state.workspace.enabled || !state.workspace.shareTrace || !state.workspace.trace.length) return "";
-  const traces = state.workspace.trace
+  if (!state.workspace.enabled || !state.workspace.shareTrace || !workspaceDirectoryHandle) return "";
+  const entries = workspaceModelTraceEntries();
+  if (!entries.length) return "";
+  const traces = entries
     .slice(-WORKSPACE_MODEL_TRACE_LIMIT)
     .map((entry) => `${entry.tool} ${entry.ok ? "OK" : "FAILED"}\ninput: ${entry.input || "(none)"}\noutput:\n${entry.output}`)
     .join("\n\n");
-  return `Workspace Agent Mode trace from selected folder "${state.workspace.folderName || workspaceRootLabel()}". Only visible read-only tool outputs/snippets are included; no raw file bytes, directory handles, hidden writes, or silent file uploads are included.\n\n${compactWhitespace(traces).slice(0, 6000)}`;
+  return `Workspace Agent Mode trace from selected folder "${state.workspace.folderName || workspaceRootLabel()}". Only visible successful read-only tool outputs/snippets are included; no raw file bytes, directory handles, hidden writes, or silent file uploads are included.\n\n${compactWorkspaceTraceForModel(traces, 6000)}`;
+}
+
+function workspaceModelTraceEntries() {
+  if (!state.workspace.enabled || !workspaceDirectoryHandle) return [];
+  return state.workspace.trace.filter((entry) => (
+    entry?.ok
+    && WORKSPACE_MODEL_TRACE_TOOLS.has(entry.tool)
+    && String(entry.output || "").trim()
+  ));
+}
+
+async function workspaceFailClosedReason(text) {
+  if (!state.workspace.enabled || !workspacePromptNeedsVerifiedTrace(text)) return "";
+  if (!state.workspace.shareTrace) {
+    return "Workspace Agent Mode will not answer about local files yet because trace sharing is off. Turn on \"Send visible tool trace snippets with chat\", run List Files, Search, or Inspect File, then send again.";
+  }
+  if (!workspaceDirectoryHandle) {
+    return "Workspace Agent Mode will not answer about local files yet because no live workspace folder is connected. Select Folder, run List Files, Search, or Inspect File, then send again.";
+  }
+  const permission = await workspaceReadPermissionState();
+  if (permission !== "granted") {
+    disconnectWorkspaceHandle();
+    return "Workspace Agent Mode will not answer about local files because browser read permission is not granted. Select Folder again, run a read-only tool, then send again.";
+  }
+  if (!workspaceModelTraceEntries().length) {
+    return "Workspace Agent Mode will not guess about local files without verified tool output. Run List Files, Search, or Inspect File so the visible trace shows what was actually inspected, then send again.";
+  }
+  return "";
+}
+
+async function workspaceReadPermissionState() {
+  if (!workspaceDirectoryHandle) return "denied";
+  try {
+    if (typeof workspaceDirectoryHandle.queryPermission === "function") {
+      return await workspaceDirectoryHandle.queryPermission({ mode: "read" });
+    }
+  } catch {
+    return "denied";
+  }
+  return "granted";
+}
+
+function workspacePromptNeedsVerifiedTrace(text) {
+  return WORKSPACE_INTENT_PATTERN.test(String(text || ""));
+}
+
+function compactWorkspaceTraceForModel(value, limit) {
+  return String(value || "")
+    .replace(/\r\n?/g, "\n")
+    .replace(/[ \t]+/g, " ")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim()
+    .slice(0, limit);
 }
 
 function requestTokenSummary(chat) {
