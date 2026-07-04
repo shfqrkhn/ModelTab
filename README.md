@@ -10,6 +10,7 @@ Every model. One tab.
 - **Bundled Tool:** [AI Studio Cleaner](https://shfqrkhn.github.io/ModelTab/tools/ai-studio-cleaner/)
 - **Portfolio Role:** Primary AI application.
 - **Maintainer handoff:** [`docs/AI_MAINTAINER_HANDOFF.md`](./docs/AI_MAINTAINER_HANDOFF.md)
+- **Release artifact policy:** [`docs/RELEASE_ARTIFACT_POLICY.md`](./docs/RELEASE_ARTIFACT_POLICY.md)
 - **License:** MIT
 
 ModelTab is a no-install, local-first BYOK AI chat PWA for OpenAI-compatible endpoints, local/LAN LLM servers, and native Gemini API keys. It gives users a browser-based alternative to desktop AI chat tools: bring an endpoint, bring a key when needed, and use the provider directly from the browser.
@@ -28,6 +29,7 @@ Many AI chat tools require a desktop install, a hosted account, or a single prov
 
 - Supports OpenAI-compatible `/chat/completions` endpoints and native Gemini APIs.
 - Includes presets for OpenAI, Azure OpenAI, OpenRouter, Groq, Gemini, DeepSeek, MiniMax, Mistral, xAI, Together, Perplexity, Fireworks, Cerebras, NVIDIA NIM, DeepInfra, SambaNova, DashScope, Vercel AI Gateway, LM Studio, Ollama, llama.cpp, vLLM, LocalAI, Text Generation WebUI, and LAN endpoints.
+- Includes source-dated free/testing presets for local endpoints, Gemini, GroqCloud, Cerebras, Cloudflare Workers AI, and OpenRouter free models without bundling keys or promising free access forever.
 - Provides prompt library, system prompt presets, slash prompt search, prompt variables, memory, per-chat context, image input, JSON mode, streaming, regeneration, copy/edit, and tree chat organization.
 - Offers encrypted full backup, normal key-free export, import, local wipe, and browser-only operation.
 - Includes optional Workspace Agent Mode for explicit selected-folder, read-only inspection with visible tool traces.
@@ -38,13 +40,32 @@ Many AI chat tools require a desktop install, a hosted account, or a single prov
 1. Open the live demo, self-host the static files, or download the latest release zip and open `index.html`.
 2. Pick a preset for an OpenAI-compatible cloud endpoint, native Gemini, or a local/LAN server.
 3. Enter base URL, model, and API key only if the endpoint requires one. Direct browser calls require the selected endpoint to allow browser CORS requests; some cloud providers block static-site browser calls.
-4. For LM Studio browser use, start the local server with CORS enabled:
+4. Use **Fetch Models** to check the endpoint or **Test Prompt** to send a tiny 32-token prompt before using a free/testing preset heavily.
+5. For LM Studio browser use, start the local server with CORS enabled:
 
    ```powershell
    lms server start --cors --port 1234
    ```
 
-5. Chat, save prompts, organize conversations, install the PWA on HTTPS/localhost when useful, and export or back up local data.
+6. Chat, save prompts, organize conversations, install the PWA on HTTPS/localhost when useful, and export or back up local data.
+
+## Free / Testing Provider Presets
+
+ModelTab offers convenience presets for providers that currently advertise local, free, or testing-friendly access. These are BYOK presets only: ModelTab never bundles API keys, never enables paid fallback, and treats all cloud prompts as leaving the browser for the selected provider.
+
+Last verified: 2026-07-04.
+
+| Preset | Setup/source |
+| --- | --- |
+| Ollama Local | [OpenAI compatibility](https://docs.ollama.com/api/openai-compatibility) |
+| LM Studio Local | [OpenAI-compatible endpoints](https://lmstudio.ai/docs/developer/openai-compat) |
+| Gemini API | [Pricing/free tier](https://ai.google.dev/gemini-api/docs/pricing) |
+| GroqCloud | [Free plan](https://groq.com/groqcloud), [rate limits](https://console.groq.com/docs/rate-limits) |
+| Cerebras | [Pricing](https://www.cerebras.ai/pricing), [OpenAI compatibility](https://inference-docs.cerebras.ai/resources/openai) |
+| Cloudflare Workers AI | [Pricing](https://developers.cloudflare.com/workers-ai/platform/pricing/), [OpenAI-compatible API](https://developers.cloudflare.com/workers-ai/configuration/open-ai-compatibility/) |
+| OpenRouter Free Router | [Free router](https://openrouter.ai/openrouter/free), [pricing/limits](https://openrouter.ai/pricing) |
+
+Free tiers, model names, quotas, retention policies, and browser CORS behavior change outside this repo. Verify the provider account page before relying on any free/testing preset.
 
 ## Release And Download
 

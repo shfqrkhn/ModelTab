@@ -13,6 +13,7 @@ const files = {
   serviceWorker: read("service-worker.js"),
   manifest: read("manifest.webmanifest"),
   readme: read("README.md"),
+  releasePolicy: read("docs/RELEASE_ARTIFACT_POLICY.md"),
   license: read("LICENSE"),
   cleanerHtml: read("tools/ai-studio-cleaner/index.html")
 };
@@ -37,9 +38,11 @@ check("no horizontal document overflow policy", includesAll(files.css, ["overflo
 check("outer panes collapse and overlay consistently", includesAll(files.css, [".app-shell.sidebar-collapsed", ".app-shell.settings-collapsed", "@media (max-width: 1600px)", "@media (max-width: 980px)", "--pane-transition"]));
 check("compact next actions keep usable target height", !/\.next-actions button\s*\{[^}]*min-height:\s*30px/s.test(files.css));
 check("common cloud provider presets exist", includesAll(files.app, ["OpenRouter", "Groq", "Gemini Native", "OpenAI", "DeepSeek", "MiniMax Global", "Mistral", "Perplexity"]));
+check("free/testing provider presets are source-dated and bounded", includesAll(`${files.app}\n${files.readme}`, ["PROVIDER_PRESET_VERSION = 8", "PROVIDER_SOURCE_VERIFIED_AT = \"2026-07-04\"", "PROVIDER_TEST_PROMPT", "PROVIDER_TEST_MAX_OUTPUT_TOKENS = 32", "OpenRouter Free Router", "Cloudflare Workers AI", "free/testing", "Last verified: 2026-07-04", "never enables paid fallback", "cloud prompts as leaving the browser"]));
 check("common local OpenAI-compatible presets exist", includesAll(files.app, ["LM Studio Local", "Ollama Local", "llama.cpp Local", "vLLM Local", "LocalAI Local", "Text Generation WebUI Local", "Local Network OpenAI Compatible"]));
-check("provider setup normalizes endpoint URLs and migrates model-fetchable presets", includesAll(files.app, ["PROVIDER_PRESET_VERSION = 7", "https://api.perplexity.ai/v1", "normalizeProviderBaseUrl", "/chat/completions", "Provider base URL must start with http:// or https://."]));
+check("provider setup normalizes endpoint URLs and migrates model-fetchable presets", includesAll(files.app, ["PROVIDER_PRESET_VERSION = 8", "https://api.perplexity.ai/v1", "normalizeProviderBaseUrl", "/chat/completions", "Provider base URL must start with http:// or https://."]));
 check("provider key safety and reserved header guardrails exist", includesAll(files.app, ["delete provider.apiKey", "RESERVED_EXTRA_HEADERS", "authorization", "x-api-key", "sanitizeKeyMap"]));
+check("provider test prompt and sanitized status errors exist", includesAll(`${files.html}\n${files.app}`, ["testProviderBtn", "Test Prompt", "testProviderPrompt", "cloudProviderNotice", "redactSensitiveText"]));
 check("extra request body cannot override core provider payload fields", includesAll(files.app, ["BLOCKED_EXTRA_BODY_TOP_LEVEL_KEYS", "mergeExtraBody", "Extra request body cannot override core request field"]));
 check("normal export excludes keys while backup/import/vault paths protect keys", includesAll(files.app, ["Data exported without API keys", "Full backup exported with encrypted keys", "AES-GCM", "PBKDF2", "keyVault", "RECOVERY_KEY", "Existing local key vault and session keys were cleared", "No session API keys to save"]));
 check("prompt, memory, and context surfaces exist", includesAll(files.html, ["systemPromptInput", "memoryInput", "contextInput", "promptLibrarySettingsDetails", "promptLibraryBtn"]));
@@ -57,7 +60,8 @@ check("PWA manifest remains local-first with richer install metadata",
   ["productivity", "utilities", "developer"].every((category) => manifest.categories?.includes(category)) &&
   ["./icons/icon.svg", "./icons/icon-192.png", "./icons/icon-512.png"].every((src) => manifest.icons?.some((icon) => icon.src === src)) &&
   manifest.screenshots?.some((screenshot) => screenshot.src === "./screenshot.png" && screenshot.sizes === "1440x1000"));
-check("README documents no-install, BYOK, providers, CORS, local file, PWA install, release download, privacy, and testing", includesAll(files.readme, ["no-install", "local-first BYOK", "OpenAI-compatible", "Gemini", "Direct browser calls require", "install the PWA", "Release And Download", "latest release zip", "Privacy And Data Model", "Local And Static Hosting", "Quality Gates"]));
+check("README documents no-install, BYOK, providers, CORS, local file, PWA install, release download, privacy, and testing", includesAll(files.readme, ["no-install", "local-first BYOK", "OpenAI-compatible", "Gemini", "Direct browser calls require", "install the PWA", "Release And Download", "latest release zip", "Privacy And Data Model", "Local And Static Hosting", "Quality Gates", "Free / Testing Provider Presets"]));
+check("release policy bounds BYOK artifacts and provider claims", includesAll(files.releasePolicy, ["static BYOK PWA", "Bundled API keys", "provider payload logs", "Claims that a provider, model list, quota, price, retention policy, or compatible endpoint is current", "normal exports omit keys", "free/testing provider claims include current source links"]));
 check("adoption surfaces include sponsor, release, bundled cleaner, screenshot, and MIT license", includesAll(`${files.html}\n${files.readme}`, ["https://github.com/sponsors/shfqrkhn?o=esb", "https://github.com/shfqrkhn/ModelTab/releases/latest", "tools/ai-studio-cleaner", "screenshot.png", "MIT"]) && includesAll(files.license, ["MIT License", "Permission is hereby granted"]));
 check("bundled cleaner is integrated into the ModelTab shell", includesAll(files.html, ["tool-link", "./tools/ai-studio-cleaner/index.html", "Open AI Studio Cleaner in ModelTab"]) && includesAll(files.cleanerHtml, ["modeltab-tool-shell", "modeltab-tool-bar", "modeltab-tool-title", "Native ModelTab workspace tool", "tool-context", "Back to ModelTab", "../../index.html", "modeltab-tool-root"]));
 check("bundled cleaner is local-first with no third-party runtime dependencies",

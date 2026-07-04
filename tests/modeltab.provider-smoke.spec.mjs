@@ -132,6 +132,12 @@ test("local OpenAI-compatible provider can fetch models and complete a chat", as
   await page.getByRole("button", { name: "Settings" }).click();
   await page.locator("#fetchModelsBtn").click();
   await expect(page.locator("#providerStatus")).toContainText("Loaded 1 models");
+  await page.locator("#testProviderBtn").click();
+  await expect(page.locator("#providerStatus")).toContainText("Test prompt succeeded");
+  const testBody = providerRequests.at(-1).body;
+  expect(testBody.messages).toEqual([{ role: "user", content: "Reply with OK only." }]);
+  expect(testBody.max_tokens).toBe(32);
+  expect(testBody.stream).toBe(false);
   await page.keyboard.press("Escape");
   await page.getByPlaceholder("Ask anything. Shift+Enter for a new line.").fill("hello");
   await page.getByRole("button", { name: "Send" }).click();

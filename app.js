@@ -12,7 +12,10 @@ const MAX_JSON_DEPTH = 64;
 const MAX_JSON_NODES = 200000;
 const MAX_JSON_KEY_LENGTH = 256;
 const MAX_ID_LENGTH = 128;
-const PROVIDER_PRESET_VERSION = 7;
+const PROVIDER_PRESET_VERSION = 8;
+const PROVIDER_SOURCE_VERIFIED_AT = "2026-07-04";
+const PROVIDER_TEST_PROMPT = "Reply with OK only.";
+const PROVIDER_TEST_MAX_OUTPUT_TOKENS = 32;
 const PROMPT_LIBRARY_VERSION = 2;
 const WORKSPACE_TRACE_LIMIT = 24;
 const WORKSPACE_MODEL_TRACE_LIMIT = 8;
@@ -94,10 +97,32 @@ const PROVIDER_PRESETS = [
     models: ["~openai/gpt-latest", "openrouter/auto", "anthropic/claude-sonnet-4.6", "google/gemini-3.5-flash"]
   },
   {
+    id: "openrouter-free",
+    defaultId: "openrouter-free-default",
+    name: "OpenRouter Free Router",
+    category: "Cloud",
+    testingTier: "free/testing",
+    sourceLabel: "OpenRouter free router",
+    sourceUrl: "https://openrouter.ai/openrouter/free",
+    setupUrl: "https://openrouter.ai/settings/keys",
+    costNote: "Routes only to OpenRouter free models; rate limits are low and can change.",
+    type: "openai",
+    baseUrl: "https://openrouter.ai/api/v1",
+    model: "openrouter/free",
+    extraHeaders: "{\"X-OpenRouter-Title\":\"ModelTab\"}",
+    noAuth: false,
+    models: ["openrouter/free"]
+  },
+  {
     id: "groq",
     defaultId: "groq-default",
     name: "Groq",
     category: "Cloud",
+    testingTier: "free/testing",
+    sourceLabel: "GroqCloud Free",
+    sourceUrl: "https://groq.com/groqcloud",
+    setupUrl: "https://console.groq.com/keys",
+    costNote: "Free plan is intended for build/test use; account limits apply.",
     type: "openai",
     baseUrl: "https://api.groq.com/openai/v1",
     model: "openai/gpt-oss-120b",
@@ -110,6 +135,11 @@ const PROVIDER_PRESETS = [
     defaultId: "gemini-default",
     name: "Gemini Native",
     category: "Cloud",
+    testingTier: "free/testing",
+    sourceLabel: "Gemini API pricing",
+    sourceUrl: "https://ai.google.dev/gemini-api/docs/pricing",
+    setupUrl: "https://aistudio.google.com/app/apikey",
+    costNote: "Free-tier model access and limits vary by model, tier, and region.",
     type: "gemini",
     baseUrl: "https://generativelanguage.googleapis.com/v1beta",
     model: "gemini-3.5-flash",
@@ -122,6 +152,11 @@ const PROVIDER_PRESETS = [
     defaultId: "gemini-openai-default",
     name: "Gemini OpenAI Compatible",
     category: "Cloud",
+    testingTier: "free/testing",
+    sourceLabel: "Gemini API pricing",
+    sourceUrl: "https://ai.google.dev/gemini-api/docs/pricing",
+    setupUrl: "https://aistudio.google.com/app/apikey",
+    costNote: "Free-tier model access and limits vary by model, tier, and region.",
     type: "openai",
     baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai",
     model: "gemini-3.5-flash",
@@ -230,6 +265,11 @@ const PROVIDER_PRESETS = [
     defaultId: "cerebras-default",
     name: "Cerebras",
     category: "Cloud",
+    testingTier: "free/testing",
+    sourceLabel: "Cerebras Free",
+    sourceUrl: "https://www.cerebras.ai/pricing",
+    setupUrl: "https://cloud.cerebras.ai/",
+    costNote: "Free access is rate-limited; verify current account limits before use.",
     type: "openai",
     baseUrl: "https://api.cerebras.ai/v1",
     model: "gpt-oss-120b",
@@ -310,10 +350,32 @@ const PROVIDER_PRESETS = [
     models: ["anthropic/claude-opus-4.8", "openai/gpt-5.5", "google/gemini-3.5-flash"]
   },
   {
+    id: "cloudflare-workers-ai",
+    defaultId: "cloudflare-workers-ai-default",
+    name: "Cloudflare Workers AI",
+    category: "Cloud",
+    testingTier: "free/testing",
+    sourceLabel: "Cloudflare Workers AI pricing",
+    sourceUrl: "https://developers.cloudflare.com/workers-ai/platform/pricing/",
+    setupUrl: "https://dash.cloudflare.com/",
+    costNote: "Daily free allocation applies; usage above it requires the paid Workers plan.",
+    type: "openai",
+    baseUrl: "https://api.cloudflare.com/client/v4/accounts/YOUR-ACCOUNT-ID/ai/v1",
+    model: "@cf/meta/llama-3.1-8b-instruct",
+    extraHeaders: "",
+    noAuth: false,
+    models: ["@cf/meta/llama-3.1-8b-instruct", "@cf/openai/gpt-oss-120b"]
+  },
+  {
     id: "lm-studio",
     defaultId: "lm-studio-default",
     name: "LM Studio Local",
     category: "Local",
+    testingTier: "local/free",
+    sourceLabel: "LM Studio OpenAI compatibility",
+    sourceUrl: "https://lmstudio.ai/docs/developer/openai-compat",
+    setupUrl: "https://lmstudio.ai/docs/developer/openai-compat",
+    costNote: "Runs against the user's local server; no cloud prompt leaves the device through ModelTab.",
     type: "openai",
     baseUrl: "http://localhost:1234/v1",
     model: "local-model",
@@ -326,6 +388,11 @@ const PROVIDER_PRESETS = [
     defaultId: "ollama-default",
     name: "Ollama Local",
     category: "Local",
+    testingTier: "local/free",
+    sourceLabel: "Ollama OpenAI compatibility",
+    sourceUrl: "https://docs.ollama.com/api/openai-compatibility",
+    setupUrl: "https://docs.ollama.com/api/openai-compatibility",
+    costNote: "Runs against the user's local Ollama server; model availability depends on local pulls.",
     type: "openai",
     baseUrl: "http://localhost:11434/v1",
     model: "llama3.2",
@@ -398,6 +465,11 @@ const PROVIDER_PRESETS = [
     defaultId: "local-network-openai-default",
     name: "Local Network OpenAI Compatible",
     category: "Local",
+    testingTier: "local/free",
+    sourceLabel: "Custom local endpoint",
+    sourceUrl: "",
+    setupUrl: "",
+    costNote: "Runs against a user-controlled local/LAN OpenAI-compatible endpoint.",
     type: "openai",
     baseUrl: "http://192.168.1.100:8080/v1",
     model: "local-model",
@@ -694,6 +766,7 @@ const dom = {
   streamInput: $("streamInput"),
   systemPromptInput: $("systemPromptInput"),
   temperatureInput: $("temperatureInput"),
+  testProviderBtn: $("testProviderBtn"),
   historyImagesInput: $("historyImagesInput"),
   topPInput: $("topPInput"),
   toastRegion: $("toastRegion"),
@@ -770,7 +843,7 @@ function registerEvents() {
     syncSettingsForm();
     renderMeta();
     renderSelfCheck();
-    if (provider) setStatus(`Provider selected: ${provider.name}.`);
+    if (provider) setStatus(providerSelectionStatus(provider));
   });
   dom.modelInput.addEventListener("change", () => saveModelFromInput(dom.modelInput));
   dom.settingsModelInput.addEventListener("change", () => saveModelFromInput(dom.settingsModelInput));
@@ -815,11 +888,12 @@ function registerEvents() {
     syncSettingsForm();
     renderMeta();
     const provider = activeProvider();
-    if (provider) setStatus(`Provider selected: ${provider.name}.`);
+    if (provider) setStatus(providerSelectionStatus(provider));
   });
   dom.providerTypeInput.addEventListener("change", syncNoAuthAvailability);
   dom.providerBaseInput.addEventListener("change", inferProviderFromBaseUrl);
   dom.fetchModelsBtn.addEventListener("click", fetchModels);
+  dom.testProviderBtn.addEventListener("click", testProviderPrompt);
   dom.providerKeyInput.addEventListener("input", () => {
     const provider = activeProvider();
     if (!provider) return;
@@ -1341,7 +1415,10 @@ function renderPresetHelp() {
   }
   const auth = preset.noAuth ? "no key" : "API key";
   const models = modelSuggestionsFromPreset(preset).slice(0, 3).join(", ");
-  dom.providerPresetHelp.textContent = `${preset.category || "Provider"} · ${preset.type === "gemini" ? "Gemini native" : "OpenAI-compatible"} · ${auth} · ${preset.baseUrl}${models ? ` · ${models}` : ""}`;
+  const testing = preset.testingTier ? ` · ${preset.testingTier} · verified ${PROVIDER_SOURCE_VERIFIED_AT}` : "";
+  const source = preset.sourceLabel ? ` · source: ${preset.sourceLabel}` : "";
+  const cost = preset.costNote ? ` · ${preset.costNote}` : "";
+  dom.providerPresetHelp.textContent = `${preset.category || "Provider"} · ${preset.type === "gemini" ? "Gemini native" : "OpenAI-compatible"} · ${auth}${testing} · ${preset.baseUrl}${models ? ` · ${models}` : ""}${source}${cost}`;
 }
 
 function syncModelInputs(model) {
@@ -2636,7 +2713,7 @@ function selectProviderPreset(presetId) {
   state.activeProviderId = provider.id;
   saveState();
   renderAll();
-  setStatus(`${preset.name} preset ${existing ? "selected" : "added"}. ${provider.noAuth ? "No API key is required." : "Add your API key to use it."}`);
+  setStatus(`${preset.name} preset ${existing ? "selected" : "added"}. ${provider.noAuth ? "No API key is required." : "Add your API key to use it."} ${presetSafetyNote(preset)}`.trim());
 }
 
 function useLocalProvider() {
@@ -2764,6 +2841,41 @@ async function fetchModels() {
     }
     const selected = provider.model && models.includes(provider.model) ? ` Selected ${provider.model}.` : "";
     setStatus(models.length ? `Connected. Loaded ${models.length} models.${selected}` : "Connected, but no models returned. Enter the model manually.");
+  } catch (error) {
+    setStatus(explainFetchError(error, provider), true);
+  }
+}
+
+async function testProviderPrompt() {
+  if (activeRequest) {
+    setStatus("A chat request is already running.", true);
+    return;
+  }
+  if (!saveProviderFromForm()) return;
+  const provider = activeProvider();
+  const key = getProviderKey(provider);
+  if (!provider || (providerNeedsKey(provider) && !key)) {
+    setStatus("Add an API key before sending the test prompt.", true);
+    return;
+  }
+  if (hasBaseUrlPlaceholder(provider.baseUrl)) {
+    setStatus("Edit the provider base URL before sending the test prompt.", true);
+    renderSelfCheck();
+    return;
+  }
+  if (httpEndpointBlockedByPageSecurity(provider.baseUrl)) {
+    setStatus("HTTPS-hosted ModelTab cannot call this HTTP endpoint. Use an HTTPS endpoint or serve ModelTab over HTTP on the same LAN.", true);
+    renderSelfCheck();
+    return;
+  }
+  const notice = cloudProviderNotice(provider);
+  setStatus(`${notice ? `${notice} ` : ""}Sending ${PROVIDER_TEST_MAX_OUTPUT_TOKENS}-token test prompt...`);
+  const controller = new AbortController();
+  try {
+    const text = provider.type === "gemini"
+      ? await testGeminiProvider(provider, key, controller.signal)
+      : await testOpenAICompatibleProvider(provider, key, controller.signal);
+    setStatus(`Test prompt succeeded: ${compact(text || "(No text returned.)", 160)}`);
   } catch (error) {
     setStatus(explainFetchError(error, provider), true);
   }
@@ -3199,6 +3311,8 @@ async function runAssistant(chat) {
   saveState();
   renderAll();
   setBusy(true);
+  const notice = cloudProviderNotice(provider);
+  if (notice) setStatus(notice);
 
   const controller = new AbortController();
   activeRequest = controller;
@@ -3300,6 +3414,25 @@ async function callOpenAICompatible(provider, key, chat, onToken, signal) {
   });
 }
 
+async function testOpenAICompatibleProvider(provider, key, signal) {
+  const payload = {
+    model: provider.model,
+    messages: [{ role: "user", content: PROVIDER_TEST_PROMPT }],
+    temperature: 0,
+    max_tokens: PROVIDER_TEST_MAX_OUTPUT_TOKENS,
+    stream: false
+  };
+  const response = await fetch(`${trimSlash(provider.baseUrl)}/chat/completions`, {
+    method: "POST",
+    headers: buildHeaders(provider, key, true),
+    body: JSON.stringify(payload),
+    signal
+  });
+  if (!response.ok) throw new Error(await response.text());
+  const data = await response.json();
+  return data.choices?.[0]?.message?.content || "";
+}
+
 async function callGemini(provider, key, chat, onToken, signal) {
   const modelPath = provider.model.startsWith("models/") ? provider.model : `models/${provider.model}`;
   const payload = {
@@ -3334,6 +3467,25 @@ async function callGemini(provider, key, chat, onToken, signal) {
     const text = extractGeminiText(parsed);
     if (text) onToken(text);
   });
+}
+
+async function testGeminiProvider(provider, key, signal) {
+  const modelPath = provider.model.startsWith("models/") ? provider.model : `models/${provider.model}`;
+  const payload = {
+    contents: [{ role: "user", parts: [{ text: PROVIDER_TEST_PROMPT }] }],
+    generationConfig: {
+      temperature: 0,
+      maxOutputTokens: PROVIDER_TEST_MAX_OUTPUT_TOKENS
+    }
+  };
+  const response = await fetch(`${trimSlash(provider.baseUrl)}/${modelPath}:generateContent`, {
+    method: "POST",
+    headers: buildHeaders(provider, key, true, true),
+    body: JSON.stringify(payload),
+    signal
+  });
+  if (!response.ok) throw new Error(await response.text());
+  return extractGeminiText(await response.json());
 }
 
 function toOpenAIMessages(chat) {
@@ -3668,6 +3820,24 @@ function providerNeedsKey(provider) {
   return Boolean(provider) && !provider.noAuth;
 }
 
+function providerSelectionStatus(provider) {
+  return `Provider selected: ${provider.name}. ${presetSafetyNote(presetForProvider(provider))}`.trim();
+}
+
+function presetSafetyNote(preset) {
+  if (!preset) return "";
+  const tier = preset.testingTier ? `${preset.testingTier} preset. ` : "";
+  if (preset.category === "Local") return `${tier}${preset.costNote || "Local endpoint; no cloud prompt is sent by ModelTab."}`;
+  return `${tier}Prompts are sent to this provider. Verify current quota, billing, and retention before use.`;
+}
+
+function cloudProviderNotice(provider) {
+  const preset = presetForProvider(provider);
+  if (preset?.category === "Local" || endpointLikelyLocalNoAuth(provider?.baseUrl)) return "";
+  const tier = preset?.testingTier ? " Free/testing limits can change." : "";
+  return `Cloud provider notice: prompts are sent to ${provider?.name || "the selected provider"}.${tier}`;
+}
+
 function hasBaseUrlPlaceholder(baseUrl) {
   const value = String(baseUrl || "");
   return /YOUR-|api\.example\.com|192\.168\.1\.100/i.test(value);
@@ -3722,9 +3892,10 @@ function setBusy(busy) {
 }
 
 function setStatus(message, error = false) {
-  dom.providerStatus.textContent = message;
+  const safeMessage = redactSensitiveText(message);
+  dom.providerStatus.textContent = safeMessage;
   dom.providerStatus.classList.toggle("error", error);
-  showToast(error ? "Needs attention" : "ModelTab", message, error ? "error" : "success");
+  showToast(error ? "Needs attention" : "ModelTab", safeMessage, error ? "error" : "success");
 }
 
 function showToast(title, message, tone = "info") {
@@ -3756,7 +3927,7 @@ function requireSecondClick(key, message, action) {
 }
 
 function explainFetchError(error, provider = activeProvider()) {
-  const raw = String(error?.message || error || "Unknown error");
+  const raw = redactSensitiveText(error?.message || error || "Unknown error");
   if (error?.name === "TypeError" || raw.includes("Failed to fetch")) {
     return localConnectionHelp(provider);
   }
@@ -4239,6 +4410,12 @@ function trimSlash(value) {
 function compact(value, length) {
   const text = String(value || "").replace(/\s+/g, " ").trim();
   return text.length > length ? `${text.slice(0, Math.max(0, length - 1))}…` : text;
+}
+
+function redactSensitiveText(value) {
+  return String(value || "")
+    .replace(/\b(Bearer|Token|Api-Key|X-Api-Key)\s+[\w.+/=-]{12,}/gi, "$1 [redacted]")
+    .replace(/\b(sk|gsk|csk|AIza)[A-Za-z0-9_\-.]{12,}/g, "$1[redacted]");
 }
 
 function formatBytes(value) {
