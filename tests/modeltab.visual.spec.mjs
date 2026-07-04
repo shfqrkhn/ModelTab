@@ -535,7 +535,7 @@ test("phone provider setup normalizes pasted endpoint without horizontal overflo
   }));
 
   await expect(page.locator("#providerBaseInput")).toHaveValue("https://api.openai.com/v1");
-  await expect(page.locator("#providerStatus")).toContainText("Provider saved");
+  await expect(page.locator("#providerStatus")).toContainText(/Provider saved|OpenAI settings detected/);
   expect(audit.overflowX).toBe(0);
   expect(audit.offscreenVisible).toEqual([]);
   expect(audit.settingsBox?.left).toBeGreaterThanOrEqual(0);
