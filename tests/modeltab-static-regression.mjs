@@ -13,7 +13,7 @@ const files = {
   serviceWorker: read("service-worker.js"),
   manifest: read("manifest.webmanifest"),
   readme: read("README.md"),
-  releasePolicy: read("docs/RELEASE_ARTIFACT_POLICY.md"),
+  zipPolicy: read("docs/REPO_ZIP_POLICY.md"),
   license: read("LICENSE"),
   cleanerHtml: read("tools/ai-studio-cleaner/index.html")
 };
@@ -60,9 +60,9 @@ check("PWA manifest remains local-first with richer install metadata",
   ["productivity", "utilities", "developer"].every((category) => manifest.categories?.includes(category)) &&
   ["./icons/icon.svg", "./icons/icon-192.png", "./icons/icon-512.png"].every((src) => manifest.icons?.some((icon) => icon.src === src)) &&
   manifest.screenshots?.some((screenshot) => screenshot.src === "./screenshot.png" && screenshot.sizes === "1440x1000"));
-check("README documents no-install, BYOK, providers, CORS, local file, PWA install, release download, privacy, and testing", includesAll(files.readme, ["no-install", "local-first BYOK", "OpenAI-compatible", "Gemini", "Direct browser calls require", "install the PWA", "Release And Download", "latest release zip", "Privacy And Data Model", "Local And Static Hosting", "Quality Gates", "Free / Testing Provider Presets"]));
-check("release policy bounds BYOK artifacts and provider claims", includesAll(files.releasePolicy, ["static BYOK PWA", "Bundled API keys", "provider payload logs", "Claims that a provider, model list, quota, price, retention policy, or compatible endpoint is current", "normal exports omit keys", "free/testing provider claims include current source links"]));
-check("adoption surfaces include sponsor, release, bundled cleaner, screenshot, and MIT license", includesAll(`${files.html}\n${files.readme}`, ["https://github.com/sponsors/shfqrkhn?o=esb", "https://github.com/shfqrkhn/ModelTab/releases/latest", "tools/ai-studio-cleaner", "screenshot.png", "MIT"]) && includesAll(files.license, ["MIT License", "Permission is hereby granted"]));
+check("README documents no-install, BYOK, providers, CORS, local file, PWA install, repository ZIP download, privacy, and testing", includesAll(files.readme, ["no-install", "local-first BYOK", "OpenAI-compatible", "Gemini", "Direct browser calls require", "install the PWA", "Repository ZIP And Download", "current main repository ZIP", "Privacy And Data Model", "Local And Static Hosting", "Quality Gates", "Free / Testing Provider Presets"]) && !files.readme.includes("/releases/latest"));
+check("repository ZIP policy bounds BYOK artifacts and provider claims", includesAll(files.zipPolicy, ["static BYOK PWA", "Bundled API keys", "provider payload logs", "Claims that a provider, model list, quota, price, retention policy, or compatible endpoint is current", "normal exports omit keys", "free/testing provider claims include current source links"]));
+check("adoption surfaces include sponsor, repository ZIP, bundled cleaner, screenshot, and MIT license", includesAll(`${files.html}\n${files.readme}`, ["https://github.com/sponsors/shfqrkhn?o=esb", "https://github.com/shfqrkhn/ModelTab/archive/refs/heads/main.zip", "tools/ai-studio-cleaner", "screenshot.png", "MIT"]) && includesAll(files.license, ["MIT License", "Permission is hereby granted"]));
 check("bundled cleaner is integrated into the ModelTab shell", includesAll(files.html, ["tool-link", "./tools/ai-studio-cleaner/index.html", "Open AI Studio Cleaner in ModelTab"]) && includesAll(files.cleanerHtml, ["modeltab-tool-shell", "modeltab-tool-bar", "modeltab-tool-title", "Native ModelTab workspace tool", "tool-context", "Back to ModelTab", "../../index.html", "modeltab-tool-root"]));
 check("bundled cleaner is local-first with no third-party runtime dependencies",
   !/<script\b[^>]*src=["']https?:\/\//i.test(files.cleanerHtml) &&

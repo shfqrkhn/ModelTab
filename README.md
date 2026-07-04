@@ -6,11 +6,11 @@ Every model. One tab.
 
 - **Status:** Active flagship
 - **Live Demo:** [shfqrkhn.github.io/ModelTab](https://shfqrkhn.github.io/ModelTab/)
-- **Latest Release:** [GitHub latest release](https://github.com/shfqrkhn/ModelTab/releases/latest)
+- **Repository ZIP:** [Download current main ZIP](https://github.com/shfqrkhn/ModelTab/archive/refs/heads/main.zip)
 - **Bundled Tool:** [AI Studio Cleaner](https://shfqrkhn.github.io/ModelTab/tools/ai-studio-cleaner/)
 - **Portfolio Role:** Primary AI application.
 - **Maintainer handoff:** [`docs/AI_MAINTAINER_HANDOFF.md`](./docs/AI_MAINTAINER_HANDOFF.md)
-- **Release artifact policy:** [`docs/RELEASE_ARTIFACT_POLICY.md`](./docs/RELEASE_ARTIFACT_POLICY.md)
+- **Repository ZIP policy:** [`docs/REPO_ZIP_POLICY.md`](./docs/REPO_ZIP_POLICY.md)
 - **License:** MIT
 
 ModelTab is a no-install, local-first BYOK AI chat PWA for OpenAI-compatible endpoints, local/LAN LLM servers, and native Gemini API keys. It gives users a browser-based alternative to desktop AI chat tools: bring an endpoint, bring a key when needed, and use the provider directly from the browser.
@@ -37,7 +37,7 @@ Many AI chat tools require a desktop install, a hosted account, or a single prov
 
 ## Quick Start
 
-1. Open the live demo, self-host the static files, or download the latest release zip and open `index.html`.
+1. Open the live demo, self-host the static files, or download the current main repository ZIP and open `index.html`.
 2. Pick a preset for an OpenAI-compatible cloud endpoint, native Gemini, or a local/LAN server.
 3. Enter base URL, model, and API key only if the endpoint requires one. Direct browser calls require the selected endpoint to allow browser CORS requests; some cloud providers block static-site browser calls.
 4. Use **Fetch Models** to check the endpoint or **Test Prompt** to send a tiny 32-token prompt before using a free/testing preset heavily.
@@ -67,10 +67,10 @@ Last verified: 2026-07-04.
 
 Free tiers, model names, quotas, retention policies, and browser CORS behavior change outside this repo. Verify the provider account page before relying on any free/testing preset.
 
-## Release And Download
+## Repository ZIP And Download
 
 - Web/PWA: use the live demo and your browser's install action.
-- Local ZIP: download the [latest release](https://github.com/shfqrkhn/ModelTab/releases/latest), extract it, and open `index.html`.
+- Local ZIP: download the [current main repository ZIP](https://github.com/shfqrkhn/ModelTab/archive/refs/heads/main.zip), extract it, and open `index.html`.
 - Self-host: serve this repository root from any static host. No backend or build step is required.
 
 AI Studio export cleanup:
@@ -105,7 +105,7 @@ AI Studio export cleanup:
 - Responsive visual gate: `npm run test:visual`
 - Local provider smoke gate: `npm run test:provider`
 - Live Pages gate after deployment: `npm run test:live`
-- Before release, also run syntax checks, a secret scan, README link/media checks, local static smoke, provider setup smoke, and GitHub Pages checks.
+- Before public ZIP/download-facing changes, also run syntax checks, a secret scan, README link/media checks, local static smoke, provider setup smoke, and GitHub Pages checks.
 
 ## Relationship To Other Projects
 
@@ -128,7 +128,7 @@ ModelTab is the main AI flagship. AI Studio Cleaner is maintained as a bundled M
 
 ## Maintenance
 
-Keep the release tree minimal: only files needed to run the app, bundled tools, README, license material, and GitHub Pages metadata. Never commit API keys, local exports, full backups, or test/runtime artifacts.
+Keep the public runnable tree minimal: only files needed to run the app, bundled tools, README, license material, and GitHub Pages metadata. Never commit API keys, local exports, full backups, or test/runtime artifacts.
 
 ## License
 

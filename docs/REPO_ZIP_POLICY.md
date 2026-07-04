@@ -1,6 +1,6 @@
-# Release Artifact Policy
+# Repository ZIP Policy
 
-ModelTab release artifacts may contain the static BYOK PWA and bundled local tools only. They must not contain user keys, private workspace data, telemetry, backend code, or unproven provider claims.
+Users should run the live GitHub Pages app or download the repository through **Code > Download ZIP**. The repository ZIP may contain the static BYOK PWA and bundled local tools only. It must not contain user keys, private workspace data, telemetry, backend code, or unproven provider claims.
 
 ## Allowed
 
@@ -16,14 +16,14 @@ ModelTab release artifacts may contain the static BYOK PWA and bundled local too
 - Free-forever claims, bundled provider keys, automatic paid fallback, or hidden proxy behavior for free/testing providers.
 - Workspace Agent write access, hidden folder reads, trace-free agent behavior, or fail-open folder inspection.
 
-## Release Claims
+## Public Claims
 
 - Allowed: static local-first BYOK AI chat PWA, explicit provider setup, source-dated free/testing presets, no bundled keys/backend/telemetry, key-free normal export, encrypted backup by explicit action, integrated AI Studio Cleaner, and opt-in read-only Workspace Agent Mode.
 - Not claimed unless separately evidenced: provider availability, model availability, external compliance review, account policy, live provider success, or enterprise/security certification.
 
 ## Verification
 
-Before publishing release assets, run:
+Before pushing public ZIP/download-facing changes, run:
 
 ```bash
 npm run test:all
@@ -31,4 +31,4 @@ npm run test:live
 git diff --check
 ```
 
-Release review must confirm normal exports omit keys, free/testing provider claims include current source links and no free-forever promise, and the release ZIP contains no private workspace data or credential material.
+Repository ZIP review must confirm normal exports omit keys, free/testing provider claims include current source links and no free-forever promise, and the repository ZIP contains no private workspace data or credential material.
