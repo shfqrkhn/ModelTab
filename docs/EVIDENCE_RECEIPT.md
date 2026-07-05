@@ -34,6 +34,12 @@ This public-safe receipt keeps ModelTab claims tied to evidence instead of chat 
 - Accessibility claims require current evidence from visual/provider/live tests, focus-return checks, labels/ARIA review, visible feedback checks, and tap-target/no-overflow checks where applicable.
 - If a workflow lacks direct input-mode coverage, label it `PASS_WITH_LIMITATIONS` or `NOT_RUN`; do not claim full accessibility from layout tests alone.
 
+## Recovery And Data Safety Evidence
+
+- Import, export, encrypted backup, key vault, corrupt-state, quota, reset/wipe, and workspace-trace recovery claims must remain fail-closed and tied to current provider, visual, local-file, or static tests.
+- Normal export must stay key-free; full backup may include keys only through explicit encrypted user action; stale session keys and saved vaults must not silently attach to key-free imports.
+- If a recovery path lacks current coverage, label it `PASS_WITH_LIMITATIONS` or `NOT_RUN`; do not imply cloud backup, remote recovery, or provider-side data control.
+
 ## Claim Boundaries
 
 | Area | Class | Evidence | Limit |
@@ -45,6 +51,7 @@ This public-safe receipt keeps ModelTab claims tied to evidence instead of chat 
 | AI Studio Cleaner integration | `PASS_WITH_LIMITATIONS` | static tests and bundled cleaner checks | Cleaner remains a local bundled tool, not a remote service. |
 | Repository ZIP safety | `PASS_WITH_LIMITATIONS` | `docs/REPO_ZIP_POLICY.md`, static tests | Recheck no keys, exports, logs, workspace data, or provider payloads are bundled. |
 | Input accessibility | `PASS_WITH_LIMITATIONS` | visual tests, provider smoke tests, live smoke, static labels/ARIA checks | Does not certify screen-reader behavior or every assistive technology/browser pairing. |
+| Recovery/data safety | `PASS_WITH_LIMITATIONS` | provider smoke tests, key-free export tests, encrypted backup tests, corrupt-state recovery tests | Does not guarantee recovery from browser profile loss or provider-side data retention. |
 
 ## Required Before Public-Facing Change
 
