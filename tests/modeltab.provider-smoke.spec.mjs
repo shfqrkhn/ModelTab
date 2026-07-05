@@ -837,6 +837,12 @@ test("free testing preset help exposes source, setup, and verification boundarie
   await expect(page.locator("#providerPresetHelp")).toContainText("https://openrouter.ai/openrouter/free");
   await expect(page.locator("#providerPresetHelp")).toContainText("https://openrouter.ai/settings/keys");
   await expect(page.locator("#providerPresetHelp")).toContainText("rate limits are low and can change");
+
+  await page.locator("#providerPresetSelect").selectOption("local-network-openai");
+  await expect(page.locator("#providerPresetHelp")).toContainText("local/free");
+  await expect(page.locator("#providerPresetHelp")).toContainText("verified 2026-07-04");
+  await expect(page.locator("#providerPresetHelp")).toContainText("https://developers.openai.com/api/reference/overview");
+  await expect(page.locator("#providerPresetHelp")).toContainText("user-controlled local/LAN endpoint");
 });
 
 test("Ollama model fetch failures show provider-specific browser diagnostics", async ({ page }) => {

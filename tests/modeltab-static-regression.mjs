@@ -78,6 +78,7 @@ function includesAll(source, values) {
 const providerSourceDate = files.app.match(/const PROVIDER_SOURCE_VERIFIED_AT = "(\d{4}-\d{2}-\d{2})";/)?.[1];
 const readmeProviderSourceDate = files.readme.match(/Last verified: (\d{4}-\d{2}-\d{2})\./)?.[1];
 const freeTestingPresetBlocks = [...files.app.matchAll(/\{[\s\S]*?testingTier:\s*"free\/testing"[\s\S]*?\n\s*\}/g)].map((match) => match[0]);
+const sourceDatedPresetBlocks = [...files.app.matchAll(/\{[\s\S]*?testingTier:\s*"(?:free\/testing|local\/free)"[\s\S]*?\n\s*\}/g)].map((match) => match[0]);
 
 check("no JS popup APIs in app shell or bundled cleaner", !/\b(alert|confirm|prompt)\s*\(/.test(`${files.html}\n${files.app}\n${files.cleanerHtml}`));
 check("no protected private or generated artifacts are tracked", forbiddenTrackedFiles.length === 0);
@@ -94,6 +95,12 @@ check("common cloud provider presets exist", includesAll(files.app, ["OpenRouter
 check("free/testing provider presets are source-dated and bounded", includesAll(`${files.app}\n${files.readme}`, ["PROVIDER_PRESET_VERSION = 8", "PROVIDER_SOURCE_VERIFIED_AT = \"2026-07-04\"", "PROVIDER_TEST_PROMPT", "PROVIDER_TEST_MAX_OUTPUT_TOKENS = 32", "OpenRouter Free Router", "Cloudflare Workers AI", "free/testing", "Last verified: 2026-07-04", "never enables paid fallback", "cloud prompts as leaving the browser"]));
 check("provider verified date matches README", Boolean(providerSourceDate) && providerSourceDate === readmeProviderSourceDate);
 check("free/testing cloud presets keep source labels and HTTPS source URLs", freeTestingPresetBlocks.length >= 6 && freeTestingPresetBlocks.every((block) =>
+  /sourceLabel:\s*"[^"]+"/.test(block) &&
+  /sourceUrl:\s*"https:\/\/[^"]+"/.test(block) &&
+  /setupUrl:\s*"https:\/\/[^"]+"/.test(block) &&
+  /costNote:\s*"[^"]+"/.test(block)
+));
+check("all source-dated free or local testing presets keep source and setup URLs", sourceDatedPresetBlocks.length >= 9 && sourceDatedPresetBlocks.every((block) =>
   /sourceLabel:\s*"[^"]+"/.test(block) &&
   /sourceUrl:\s*"https:\/\/[^"]+"/.test(block) &&
   /setupUrl:\s*"https:\/\/[^"]+"/.test(block) &&
