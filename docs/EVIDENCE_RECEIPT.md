@@ -44,6 +44,7 @@ This public-safe receipt keeps ModelTab claims tied to evidence instead of chat 
 ## Provider Currentness Evidence
 
 - Provider docs, marketing pages, search results, dashboards, or screenshots are not evidence for ModelTab presets until the preset source URL, source date, and in-app wording are updated together.
+- The in-app provider preset help must expose the source URL, setup URL when available, source date, and caution text so users can verify free/testing presets before sending prompts.
 - Free/testing labels may describe only the source-dated preset intent; they must not imply free-forever availability, current quota, current pricing, CORS success, model availability, retention policy, or a paid fallback.
 - If a provider source is stale, unreachable, contradicted, or not checked in the current pass, keep the preset usable as BYOK/custom configuration but downgrade public claims to `PASS_WITH_LIMITATIONS`, `NOT_RUN`, `BLOCKED`, or `NO_GO`.
 

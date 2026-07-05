@@ -1429,9 +1429,10 @@ function renderPresetHelp() {
   const auth = preset.noAuth ? "no key" : "API key";
   const models = modelSuggestionsFromPreset(preset).slice(0, 3).join(", ");
   const testing = preset.testingTier ? ` · ${preset.testingTier} · verified ${PROVIDER_SOURCE_VERIFIED_AT}` : "";
-  const source = preset.sourceLabel ? ` · source: ${preset.sourceLabel}` : "";
+  const source = preset.sourceLabel ? ` · source: ${preset.sourceLabel}${preset.sourceUrl ? ` ${preset.sourceUrl}` : ""}` : "";
+  const setup = preset.setupUrl ? ` · setup: ${preset.setupUrl}` : "";
   const cost = preset.costNote ? ` · ${preset.costNote}` : "";
-  dom.providerPresetHelp.textContent = `${preset.category || "Provider"} · ${preset.type === "gemini" ? "Gemini native" : "OpenAI-compatible"} · ${auth}${testing} · ${preset.baseUrl}${models ? ` · ${models}` : ""}${source}${cost}`;
+  dom.providerPresetHelp.textContent = `${preset.category || "Provider"} · ${preset.type === "gemini" ? "Gemini native" : "OpenAI-compatible"} · ${auth}${testing} · ${preset.baseUrl}${models ? ` · ${models}` : ""}${source}${setup}${cost}`;
 }
 
 function syncModelInputs(model) {

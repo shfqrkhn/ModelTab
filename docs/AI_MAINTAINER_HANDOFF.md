@@ -61,4 +61,5 @@ Also perform a secret scan and verify no API keys, exports, encrypted backups, l
 1. Keep tightening the small-screen chat layout without sacrificing pane discoverability.
 2. Keep AI Studio Cleaner visually and navigationally native to ModelTab.
 3. Expand provider setup only when it improves real usability without creating key-handling risk.
-4. Expand Workspace Agent Mode only behind explicit consent, visible traces, and read-only/browser-sandboxed defaults.
+4. Keep provider preset help source-dated and link-visible: source URL, setup URL when available, verification date, and caution text must stay visible before users rely on free/testing presets.
+5. Expand Workspace Agent Mode only behind explicit consent, visible traces, and read-only/browser-sandboxed defaults.

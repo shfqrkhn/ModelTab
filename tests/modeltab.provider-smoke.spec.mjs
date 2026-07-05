@@ -828,6 +828,17 @@ test("legacy Perplexity default migrates to the model-fetchable v1 base", async 
   await expect(page.locator("#providerPresetHelp")).toContainText("https://api.perplexity.ai/v1");
 });
 
+test("free testing preset help exposes source, setup, and verification boundaries", async ({ page }) => {
+  await page.goto(appUrl);
+  await page.getByRole("button", { name: "Settings" }).click();
+  await page.locator("#providerPresetSelect").selectOption("openrouter-free");
+  await expect(page.locator("#providerPresetHelp")).toContainText("free/testing");
+  await expect(page.locator("#providerPresetHelp")).toContainText("verified 2026-07-04");
+  await expect(page.locator("#providerPresetHelp")).toContainText("https://openrouter.ai/openrouter/free");
+  await expect(page.locator("#providerPresetHelp")).toContainText("https://openrouter.ai/settings/keys");
+  await expect(page.locator("#providerPresetHelp")).toContainText("rate limits are low and can change");
+});
+
 test("Ollama model fetch failures show provider-specific browser diagnostics", async ({ page }) => {
   await page.addInitScript(() => {
     localStorage.setItem("modeltab-state-v1", JSON.stringify({
