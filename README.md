@@ -99,6 +99,7 @@ AI Studio export cleanup:
 
 ## Quality Gates
 
+- Full local + live QA gate: `npm run qa`
 - Static regression gate: `npm test`
 - Workspace worker gate: `npm run test:worker`
 - Local-file contract smoke: `npm run test:local-file`

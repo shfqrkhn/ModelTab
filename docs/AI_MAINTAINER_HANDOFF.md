@@ -51,12 +51,7 @@ Maintain ModelTab as the flagship no-install BYOK AI chat PWA. It must remain st
 Run relevant gates after material changes:
 
 ```bash
-npm test
-npm run test:worker
-npm run test:local-file
-npm run test:visual
-npm run test:provider
-npm run test:live
+npm run qa
 ```
 
 Also perform a secret scan and verify no API keys, exports, encrypted backups, local chat data, screenshots with personal data, `node_modules`, `test-results`, or `playwright-report` are committed.

@@ -6,6 +6,7 @@ const root = fileURLToPath(new URL("..", import.meta.url));
 const read = (path) => readFileSync(join(root, path), "utf8");
 
 const files = {
+  packageJson: read("package.json"),
   html: read("index.html"),
   css: read("styles.css"),
   app: read("app.js"),
@@ -19,6 +20,7 @@ const files = {
   license: read("LICENSE"),
   cleanerHtml: read("tools/ai-studio-cleaner/index.html")
 };
+const packageJson = JSON.parse(files.packageJson);
 const manifest = JSON.parse(files.manifest);
 
 const checks = [];
@@ -63,6 +65,7 @@ check("PWA manifest remains local-first with richer install metadata",
   ["./icons/icon.svg", "./icons/icon-192.png", "./icons/icon-512.png"].every((src) => manifest.icons?.some((icon) => icon.src === src)) &&
   manifest.screenshots?.some((screenshot) => screenshot.src === "./screenshot.png" && screenshot.sizes === "1440x1000"));
 check("README documents no-install, BYOK, providers, CORS, local file, PWA install, repository ZIP download, privacy, and testing", includesAll(files.readme, ["no-install", "local-first BYOK", "OpenAI-compatible", "Gemini", "Direct browser calls require", "install the PWA", "Repository ZIP And Download", "current main repository ZIP", "Privacy And Data Model", "Local And Static Hosting", "Quality Gates", "Free / Testing Provider Presets"]) && !files.readme.includes("/releases/latest"));
+check("full QA script includes local and live gates", includesAll(`${packageJson.scripts?.qa || ""}\n${files.readme}\n${files.zipPolicy}\n${files.evidenceReceipt}\n${files.handoff}`, ["npm run test:all", "npm run test:live", "npm run qa"]));
 check("repository ZIP policy bounds BYOK artifacts and provider claims", includesAll(files.zipPolicy, ["static BYOK PWA", "Bundled API keys", "provider payload logs", "Claims that a provider, model list, quota, price, retention policy, or compatible endpoint is current", "normal exports omit keys", "free/testing provider claims include current source links"]));
 check("evidence receipt classifies provider and workspace claims", includesAll(files.evidenceReceipt, ["PASS_WITH_LIMITATIONS", "NO_GO", "Free/testing presets", "Workspace Agent Mode", "No bundled keys/backend/telemetry"]));
 check("evidence receipt preserves claim firewall invariant", includesAll(files.evidenceReceipt, ["Claim Firewall Invariant", "Claim Boundaries", "must map", "NOT_RUN", "BLOCKED", "current source/repo state"]));

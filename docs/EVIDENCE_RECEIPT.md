@@ -63,8 +63,7 @@ This public-safe receipt keeps ModelTab claims tied to evidence instead of chat 
 
 - `git status --short --ignored`
 - `git rev-list --left-right --count HEAD..."@{u}"`
-- `npm run test:all`
-- `npm run test:live` when live behavior is relevant
+- `npm run qa`
 - `git diff --check`
 - protected-path and credential scan
 - live Pages check after runtime or public-surface changes

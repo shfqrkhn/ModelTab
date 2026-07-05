@@ -12,7 +12,8 @@
     "test:visual": "playwright test tests/modeltab.visual.spec.mjs --reporter=line",
     "test:provider": "playwright test tests/modeltab.provider-smoke.spec.mjs --reporter=line",
     "test:live": "playwright test tests/modeltab.live.spec.mjs --reporter=line",
-    "test:all": "npm test && npm run test:links && npm run test:worker && npm run test:local-file && npm run test:visual && npm run test:provider"
+    "test:all": "npm test && npm run test:links && npm run test:worker && npm run test:local-file && npm run test:visual && npm run test:provider",
+    "qa": "npm run test:all && npm run test:live"
   },
   "devDependencies": {
     "@playwright/test": "1.61.1"
