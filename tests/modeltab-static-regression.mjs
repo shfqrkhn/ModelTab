@@ -14,6 +14,7 @@ const files = {
   manifest: read("manifest.webmanifest"),
   readme: read("README.md"),
   zipPolicy: read("docs/REPO_ZIP_POLICY.md"),
+  evidenceReceipt: read("docs/EVIDENCE_RECEIPT.md"),
   license: read("LICENSE"),
   cleanerHtml: read("tools/ai-studio-cleaner/index.html")
 };
@@ -62,6 +63,7 @@ check("PWA manifest remains local-first with richer install metadata",
   manifest.screenshots?.some((screenshot) => screenshot.src === "./screenshot.png" && screenshot.sizes === "1440x1000"));
 check("README documents no-install, BYOK, providers, CORS, local file, PWA install, repository ZIP download, privacy, and testing", includesAll(files.readme, ["no-install", "local-first BYOK", "OpenAI-compatible", "Gemini", "Direct browser calls require", "install the PWA", "Repository ZIP And Download", "current main repository ZIP", "Privacy And Data Model", "Local And Static Hosting", "Quality Gates", "Free / Testing Provider Presets"]) && !files.readme.includes("/releases/latest"));
 check("repository ZIP policy bounds BYOK artifacts and provider claims", includesAll(files.zipPolicy, ["static BYOK PWA", "Bundled API keys", "provider payload logs", "Claims that a provider, model list, quota, price, retention policy, or compatible endpoint is current", "normal exports omit keys", "free/testing provider claims include current source links"]));
+check("evidence receipt classifies provider and workspace claims", includesAll(files.evidenceReceipt, ["PASS_WITH_LIMITATIONS", "NO_GO", "Free/testing presets", "Workspace Agent Mode", "No bundled keys/backend/telemetry"]));
 check("adoption surfaces include sponsor, repository ZIP, bundled cleaner, screenshot, and MIT license", includesAll(`${files.html}\n${files.readme}`, ["https://github.com/sponsors/shfqrkhn?o=esb", "https://github.com/shfqrkhn/ModelTab/archive/refs/heads/main.zip", "tools/ai-studio-cleaner", "screenshot.png", "MIT"]) && includesAll(files.license, ["MIT License", "Permission is hereby granted"]));
 check("bundled cleaner is integrated into the ModelTab shell", includesAll(files.html, ["tool-link", "./tools/ai-studio-cleaner/index.html", "Open AI Studio Cleaner in ModelTab"]) && includesAll(files.cleanerHtml, ["modeltab-tool-shell", "modeltab-tool-bar", "modeltab-tool-title", "Native ModelTab workspace tool", "tool-context", "Back to ModelTab", "../../index.html", "modeltab-tool-root"]));
 check("bundled cleaner is local-first with no third-party runtime dependencies",
