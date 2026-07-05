@@ -40,6 +40,12 @@ This public-safe receipt keeps ModelTab claims tied to evidence instead of chat 
 - Normal export must stay key-free; full backup may include keys only through explicit encrypted user action; stale session keys and saved vaults must not silently attach to key-free imports.
 - If a recovery path lacks current coverage, label it `PASS_WITH_LIMITATIONS` or `NOT_RUN`; do not imply cloud backup, remote recovery, or provider-side data control.
 
+## Provider Currentness Evidence
+
+- Provider docs, marketing pages, search results, dashboards, or screenshots are not evidence for ModelTab presets until the preset source URL, source date, and in-app wording are updated together.
+- Free/testing labels may describe only the source-dated preset intent; they must not imply free-forever availability, current quota, current pricing, CORS success, model availability, retention policy, or a paid fallback.
+- If a provider source is stale, unreachable, contradicted, or not checked in the current pass, keep the preset usable as BYOK/custom configuration but downgrade public claims to `PASS_WITH_LIMITATIONS`, `NOT_RUN`, `BLOCKED`, or `NO_GO`.
+
 ## Claim Boundaries
 
 | Area | Class | Evidence | Limit |
