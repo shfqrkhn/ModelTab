@@ -16,6 +16,12 @@ This public-safe receipt keeps ModelTab claims tied to evidence instead of chat 
 - Public claims may not exceed `PASS` or `PASS_WITH_LIMITATIONS`; `NOT_RUN`, `BLOCKED`, and `NO_GO` items must stay unpublished or be labeled as unavailable.
 - Volatile provider, model, pricing, quota, browser, and GitHub settings must be rechecked from current source/repo state before reliance.
 
+## Currentness Watchdog
+
+- Recheck claim evidence before public-facing changes, not on a fixed calendar.
+- If current evidence is stale, missing, inaccessible, or contradicted by provider/source/repo/GitHub state, downgrade the affected claim to `NOT_RUN`, `BLOCKED`, or `NO_GO`.
+- Do not preserve old status snapshots as proof after provider presets, source dates, workspace authority, key handling, workflows, or public privacy wording changes.
+
 ## Claim Boundaries
 
 | Area | Class | Evidence | Limit |
