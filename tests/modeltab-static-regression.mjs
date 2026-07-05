@@ -42,6 +42,10 @@ function includesAll(source, values) {
   return values.every((value) => source.includes(value));
 }
 
+const providerSourceDate = files.app.match(/const PROVIDER_SOURCE_VERIFIED_AT = "(\d{4}-\d{2}-\d{2})";/)?.[1];
+const readmeProviderSourceDate = files.readme.match(/Last verified: (\d{4}-\d{2}-\d{2})\./)?.[1];
+const freeTestingPresetBlocks = [...files.app.matchAll(/\{[\s\S]*?testingTier:\s*"free\/testing"[\s\S]*?\n\s*\}/g)].map((match) => match[0]);
+
 check("no JS popup APIs in app shell or bundled cleaner", !/\b(alert|confirm|prompt)\s*\(/.test(`${files.html}\n${files.app}\n${files.cleanerHtml}`));
 check("no protected private or generated artifacts are tracked", forbiddenTrackedFiles.length === 0);
 check("CSP blocks inline and third-party script execution", /Content-Security-Policy/.test(files.html) && /script-src 'self'/.test(files.html) && /object-src 'none'/.test(files.html));
@@ -53,6 +57,14 @@ check("outer panes collapse and overlay consistently", includesAll(files.css, ["
 check("compact next actions keep usable target height", !/\.next-actions button\s*\{[^}]*min-height:\s*30px/s.test(files.css));
 check("common cloud provider presets exist", includesAll(files.app, ["OpenRouter", "Groq", "Gemini Native", "OpenAI", "DeepSeek", "MiniMax Global", "Mistral", "Perplexity"]));
 check("free/testing provider presets are source-dated and bounded", includesAll(`${files.app}\n${files.readme}`, ["PROVIDER_PRESET_VERSION = 8", "PROVIDER_SOURCE_VERIFIED_AT = \"2026-07-04\"", "PROVIDER_TEST_PROMPT", "PROVIDER_TEST_MAX_OUTPUT_TOKENS = 32", "OpenRouter Free Router", "Cloudflare Workers AI", "free/testing", "Last verified: 2026-07-04", "never enables paid fallback", "cloud prompts as leaving the browser"]));
+check("provider verified date matches README", Boolean(providerSourceDate) && providerSourceDate === readmeProviderSourceDate);
+check("free/testing cloud presets keep source labels and HTTPS source URLs", freeTestingPresetBlocks.length >= 6 && freeTestingPresetBlocks.every((block) =>
+  /sourceLabel:\s*"[^"]+"/.test(block) &&
+  /sourceUrl:\s*"https:\/\/[^"]+"/.test(block) &&
+  /setupUrl:\s*"https:\/\/[^"]+"/.test(block) &&
+  /costNote:\s*"[^"]+"/.test(block)
+));
+check("public provider wording avoids free-forever and paid-fallback promises", !/\bfree[- ]forever\b/i.test(`${files.app}\n${files.readme}`) && !/\bpaid fallback\b/i.test(`${files.app}\n${files.readme}`.replace(/never enables paid fallback/gi, "")));
 check("common local OpenAI-compatible presets exist", includesAll(files.app, ["LM Studio Local", "Ollama Local", "llama.cpp Local", "vLLM Local", "LocalAI Local", "Text Generation WebUI Local", "Local Network OpenAI Compatible"]));
 check("provider setup normalizes endpoint URLs and migrates model-fetchable presets", includesAll(files.app, ["PROVIDER_PRESET_VERSION = 8", "https://api.perplexity.ai/v1", "normalizeProviderBaseUrl", "/chat/completions", "Provider base URL must start with http:// or https://."]));
 check("provider key safety and reserved header guardrails exist", includesAll(files.app, ["delete provider.apiKey", "RESERVED_EXTRA_HEADERS", "authorization", "x-api-key", "sanitizeKeyMap"]));
