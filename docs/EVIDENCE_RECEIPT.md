@@ -63,7 +63,7 @@ This public-safe receipt keeps ModelTab claims tied to evidence instead of chat 
 ## Required Before Public-Facing Change
 
 - `git status --short --ignored`
-- `git rev-list --left-right --count HEAD..."@{u}"`
+- `git rev-list --left-right --count 'HEAD...@{u}'`
 - `npm run qa`
 - `git diff --check`
 - protected-path and credential scan
