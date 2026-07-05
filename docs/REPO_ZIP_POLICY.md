@@ -1,6 +1,6 @@
 # Repository ZIP Policy
 
-Users should run the live GitHub Pages app or download the repository through **Code > Download ZIP**. The repository ZIP may contain the static BYOK PWA and bundled local tools only. It must not contain user keys, private workspace data, telemetry, backend code, or unproven provider claims.
+Users should run the live GitHub Pages app or download the repository through **Code > Download ZIP**. The generated repository ZIP may contain the static BYOK PWA and bundled local tools only. It must not contain user keys, private workspace data, telemetry, backend code, or unproven provider claims.
 
 ## Allowed
 
@@ -31,3 +31,4 @@ git diff --check
 ```
 
 Repository ZIP review must confirm normal exports omit keys, free/testing provider claims include current source links and no free-forever promise, and the repository ZIP contains no private workspace data or credential material.
+Use `git archive --format=tar HEAD` as the local generated-archive proxy when checking runtime entries and forbidden archive paths before public download-facing changes.

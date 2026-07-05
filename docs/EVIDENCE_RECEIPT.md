@@ -56,7 +56,7 @@ This public-safe receipt keeps ModelTab claims tied to evidence instead of chat 
 | Free/testing presets | `PASS_WITH_LIMITATIONS` | source-dated provider preset tests | No free-forever, quota, pricing, or availability guarantee. Refresh sources before reliance. |
 | Workspace Agent Mode | `PASS_WITH_LIMITATIONS` | provider/workspace tests, worker guardrails | Must remain opt-in, selected-folder scoped, read-only by default, trace-visible, and fail-closed. |
 | AI Studio Cleaner integration | `PASS_WITH_LIMITATIONS` | static tests and bundled cleaner checks | Cleaner remains a local bundled tool, not a remote service. |
-| Repository ZIP safety | `PASS_WITH_LIMITATIONS` | `docs/REPO_ZIP_POLICY.md`, static tests | Recheck no keys, exports, logs, workspace data, or provider payloads are bundled. |
+| Repository ZIP safety | `PASS_WITH_LIMITATIONS` | `docs/REPO_ZIP_POLICY.md`, `git archive`, static tests | Recheck no keys, exports, logs, workspace data, or provider payloads are bundled. |
 | Input accessibility | `PASS_WITH_LIMITATIONS` | visual tests, provider smoke tests, live smoke, static labels/ARIA checks | Does not certify screen-reader behavior or every assistive technology/browser pairing. |
 | Recovery/data safety | `PASS_WITH_LIMITATIONS` | provider smoke tests, key-free export tests, encrypted backup tests, corrupt-state recovery tests | Does not guarantee recovery from browser profile loss or provider-side data retention. |
 

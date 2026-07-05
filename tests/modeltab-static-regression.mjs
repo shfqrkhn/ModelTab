@@ -32,6 +32,39 @@ const trackedFiles = execFileSync("git", ["ls-files"], { cwd: root, encoding: "u
   .map((file) => file.replace(/\\/g, "/"));
 const forbiddenTrackedFiles = trackedFiles.filter((file) => forbiddenTrackedPathPattern.test(file));
 
+function gitArchiveEntries() {
+  const buffer = execFileSync("git", ["archive", "--format=tar", "HEAD"], {
+    cwd: root,
+    maxBuffer: 128 * 1024 * 1024
+  });
+  const entries = [];
+  let offset = 0;
+  while (offset + 512 <= buffer.length) {
+    const header = buffer.subarray(offset, offset + 512);
+    if (header.every((byte) => byte === 0)) break;
+    const name = header.toString("utf8", 0, 100).replace(/\0.*$/, "");
+    const prefix = header.toString("utf8", 345, 500).replace(/\0.*$/, "");
+    const sizeRaw = header.toString("utf8", 124, 136).replace(/\0.*$/, "").trim();
+    const size = sizeRaw ? parseInt(sizeRaw, 8) : 0;
+    const fullName = [prefix, name].filter(Boolean).join("/");
+    if (fullName) entries.push(fullName.replace(/\\/g, "/"));
+    offset += 512 + Math.ceil(size / 512) * 512;
+  }
+  return entries;
+}
+
+const archiveEntries = gitArchiveEntries();
+const forbiddenArchiveEntries = archiveEntries.filter((file) => forbiddenTrackedPathPattern.test(file));
+const runtimeArchiveEntries = [
+  "index.html",
+  "app.js",
+  "styles.css",
+  "service-worker.js",
+  "manifest.webmanifest",
+  "workspace-worker.js",
+  "tools/ai-studio-cleaner/index.html"
+];
+
 const checks = [];
 
 function check(name, condition) {
@@ -48,6 +81,8 @@ const freeTestingPresetBlocks = [...files.app.matchAll(/\{[\s\S]*?testingTier:\s
 
 check("no JS popup APIs in app shell or bundled cleaner", !/\b(alert|confirm|prompt)\s*\(/.test(`${files.html}\n${files.app}\n${files.cleanerHtml}`));
 check("no protected private or generated artifacts are tracked", forbiddenTrackedFiles.length === 0);
+check("generated repository archive excludes protected private or generated artifacts", forbiddenArchiveEntries.length === 0);
+check("generated repository archive contains runnable ModelTab and bundled cleaner files", runtimeArchiveEntries.every((entry) => archiveEntries.includes(entry)));
 check("CSP blocks inline and third-party script execution", /Content-Security-Policy/.test(files.html) && /script-src 'self'/.test(files.html) && /object-src 'none'/.test(files.html));
 check("static local mode skips manifest and service worker", includesAll(files.app, ["function attachManifest()", "if (!isHttpLikePage()) return;", "function registerServiceWorker()", "serviceWorker"]));
 check("local-file smoke gate exists", files.readme.includes("npm run test:local-file") && read("tests/modeltab.local-file-smoke.mjs").includes("local-file contract smoke"));
@@ -88,13 +123,14 @@ check("PWA manifest remains local-first with richer install metadata",
   manifest.screenshots?.some((screenshot) => screenshot.src === "./screenshot.png" && screenshot.sizes === "1440x1000"));
 check("README documents no-install, BYOK, providers, CORS, local file, PWA install, repository ZIP download, privacy, and testing", includesAll(files.readme, ["no-install", "local-first BYOK", "OpenAI-compatible", "Gemini", "Direct browser calls require", "install the PWA", "Repository ZIP And Download", "current main repository ZIP", "Privacy And Data Model", "Local And Static Hosting", "Quality Gates", "Free / Testing Provider Presets"]) && !files.readme.includes("/releases/latest"));
 check("full QA script includes local and live gates", includesAll(`${packageJson.scripts?.qa || ""}\n${files.readme}\n${files.zipPolicy}\n${files.evidenceReceipt}\n${files.handoff}`, ["npm run test:all", "npm run test:live", "npm run qa"]));
-check("repository ZIP policy bounds BYOK artifacts and provider claims", includesAll(files.zipPolicy, ["static BYOK PWA", "Bundled API keys", "provider payload logs", "Claims that a provider, model list, quota, price, retention policy, or compatible endpoint is current", "normal exports omit keys", "free/testing provider claims include current source links"]));
+check("repository ZIP policy bounds BYOK artifacts and provider claims", includesAll(files.zipPolicy, ["static BYOK PWA", "Bundled API keys", "provider payload logs", "Claims that a provider, model list, quota, price, retention policy, or compatible endpoint is current", "normal exports omit keys", "free/testing provider claims include current source links", "git archive"]));
 check("evidence receipt classifies provider and workspace claims", includesAll(files.evidenceReceipt, ["PASS_WITH_LIMITATIONS", "NO_GO", "Free/testing presets", "Workspace Agent Mode", "No bundled keys/backend/telemetry"]));
 check("evidence receipt preserves claim firewall invariant", includesAll(files.evidenceReceipt, ["Claim Firewall Invariant", "Claim Boundaries", "must map", "NOT_RUN", "BLOCKED", "current source/repo state"]));
 check("evidence receipt preserves currentness watchdog", includesAll(files.evidenceReceipt, ["Currentness Watchdog", "stale, missing, inaccessible", "downgrade the affected claim", "provider/source/repo/GitHub state"]));
 check("evidence receipt preserves safe-to-publish receipt", includesAll(files.evidenceReceipt, ["Safe-To-Publish Receipt", "clean synced tree", "no GitHub Releases", "no protected tracked paths", "no open secret/dependabot/code-scanning alerts", "code-scanning not-applicable/no-analysis state", "remaining risks"]));
 check("evidence receipt preserves PowerShell-safe upstream delta command", files.evidenceReceipt.includes("git rev-list --left-right --count 'HEAD...@{u}'"));
 check("evidence receipt requires GitHub Releases absence check", files.evidenceReceipt.includes("gh release list --limit 5"));
+check("evidence receipt ties repository ZIP safety to generated archive evidence", files.evidenceReceipt.includes("git archive"));
 check("evidence receipt preserves CodeQL evidence", includesAll(files.evidenceReceipt, ["Runtime app code scanning", ".github/workflows/codeql.yml", "CodeQL JavaScript analysis", "PASS_WITH_LIMITATIONS"]));
 check("CodeQL workflow scans JavaScript with security events", includesAll(files.codeqlWorkflow, ["github/codeql-action/init@v4", "github/codeql-action/analyze@v4", "languages: javascript-typescript", "security-events: write", "config-file: ./.github/codeql/codeql-config.yml"]));
 check("CodeQL config excludes tests and generated residue", includesAll(files.codeqlConfig, ["paths-ignore:", "tests/**", "node_modules/**", "test-results/**", "playwright-report/**"]));
