@@ -28,6 +28,12 @@ This public-safe receipt keeps ModelTab claims tied to evidence instead of chat 
 - If any proof is missing, stale, or contradicted by GitHub/repo/provider state, record the repo as `PASS_WITH_LIMITATIONS`, `NOT_RUN`, `BLOCKED`, or `NO_GO` instead of safe.
 - The final status table must name remaining risks rather than implying safety from silence.
 
+## Input Accessibility Evidence
+
+- Critical chat, provider, cleaner, workspace, import/export, and settings workflows must remain usable by keyboard-only, mouse/pointer-only, and touch-only users.
+- Accessibility claims require current evidence from visual/provider/live tests, focus-return checks, labels/ARIA review, visible feedback checks, and tap-target/no-overflow checks where applicable.
+- If a workflow lacks direct input-mode coverage, label it `PASS_WITH_LIMITATIONS` or `NOT_RUN`; do not claim full accessibility from layout tests alone.
+
 ## Claim Boundaries
 
 | Area | Class | Evidence | Limit |
@@ -38,6 +44,7 @@ This public-safe receipt keeps ModelTab claims tied to evidence instead of chat 
 | Workspace Agent Mode | `PASS_WITH_LIMITATIONS` | provider/workspace tests, worker guardrails | Must remain opt-in, selected-folder scoped, read-only by default, trace-visible, and fail-closed. |
 | AI Studio Cleaner integration | `PASS_WITH_LIMITATIONS` | static tests and bundled cleaner checks | Cleaner remains a local bundled tool, not a remote service. |
 | Repository ZIP safety | `PASS_WITH_LIMITATIONS` | `docs/REPO_ZIP_POLICY.md`, static tests | Recheck no keys, exports, logs, workspace data, or provider payloads are bundled. |
+| Input accessibility | `PASS_WITH_LIMITATIONS` | visual tests, provider smoke tests, live smoke, static labels/ARIA checks | Does not certify screen-reader behavior or every assistive technology/browser pairing. |
 
 ## Required Before Public-Facing Change
 
