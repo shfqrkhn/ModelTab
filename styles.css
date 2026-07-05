@@ -514,7 +514,10 @@ select:focus {
 }
 
 .conversation-open {
+  display: grid;
+  align-content: center;
   min-width: 0;
+  min-height: 34px;
   padding: 0;
   background: transparent;
   color: var(--text);
@@ -840,7 +843,7 @@ select:focus {
   width: 100%;
   max-width: var(--content-max);
   margin: 0 auto;
-  padding: 12px var(--content-pad) max(14px, env(safe-area-inset-bottom));
+  padding: 10px var(--content-pad) max(10px, env(safe-area-inset-bottom));
   border-top: 1px solid var(--line);
   background: var(--composer-bg);
 }
@@ -944,7 +947,7 @@ select:focus {
 }
 
 #promptInput {
-  min-height: 72px;
+  min-height: 60px;
   max-height: 34vh;
   overflow-x: hidden;
   overflow-y: auto;
