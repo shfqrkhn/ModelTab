@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { join } from "node:path";
@@ -22,6 +23,12 @@ const files = {
 };
 const packageJson = JSON.parse(files.packageJson);
 const manifest = JSON.parse(files.manifest);
+const forbiddenTrackedPathPattern = /(^|\/)(node_modules|offline|linkedin-post-package|test-results|playwright-report|\.codex-remote-attachments)(\/|$)|^data\/(manual-overrides\.json|latest-simulation\.json|scoreboards)(\/|$)|(^|\/).*\.((env)|(pem)|(key)|(p12)|(pfx))$|(^|\/)(exports?|backups?|logs?|scratch)(\/|$)/i;
+const trackedFiles = execFileSync("git", ["ls-files"], { cwd: root, encoding: "utf8" })
+  .split(/\r?\n/)
+  .filter(Boolean)
+  .map((file) => file.replace(/\\/g, "/"));
+const forbiddenTrackedFiles = trackedFiles.filter((file) => forbiddenTrackedPathPattern.test(file));
 
 const checks = [];
 
@@ -34,6 +41,7 @@ function includesAll(source, values) {
 }
 
 check("no JS popup APIs in app shell or bundled cleaner", !/\b(alert|confirm|prompt)\s*\(/.test(`${files.html}\n${files.app}\n${files.cleanerHtml}`));
+check("no protected private or generated artifacts are tracked", forbiddenTrackedFiles.length === 0);
 check("CSP blocks inline and third-party script execution", /Content-Security-Policy/.test(files.html) && /script-src 'self'/.test(files.html) && /object-src 'none'/.test(files.html));
 check("static local mode skips manifest and service worker", includesAll(files.app, ["function attachManifest()", "if (!isHttpLikePage()) return;", "function registerServiceWorker()", "serviceWorker"]));
 check("local-file smoke gate exists", files.readme.includes("npm run test:local-file") && read("tests/modeltab.local-file-smoke.mjs").includes("local-file contract smoke"));
