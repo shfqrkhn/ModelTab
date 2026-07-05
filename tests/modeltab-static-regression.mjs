@@ -19,6 +19,7 @@ const files = {
   evidenceReceipt: read("docs/EVIDENCE_RECEIPT.md"),
   handoff: read("docs/AI_MAINTAINER_HANDOFF.md"),
   codeqlWorkflow: read(".github/workflows/codeql.yml"),
+  codeqlConfig: read(".github/codeql/codeql-config.yml"),
   license: read("LICENSE"),
   cleanerHtml: read("tools/ai-studio-cleaner/index.html")
 };
@@ -81,7 +82,8 @@ check("evidence receipt preserves claim firewall invariant", includesAll(files.e
 check("evidence receipt preserves currentness watchdog", includesAll(files.evidenceReceipt, ["Currentness Watchdog", "stale, missing, inaccessible", "downgrade the affected claim", "provider/source/repo/GitHub state"]));
 check("evidence receipt preserves safe-to-publish receipt", includesAll(files.evidenceReceipt, ["Safe-To-Publish Receipt", "clean synced tree", "no GitHub Releases", "no protected tracked paths", "no open secret/dependabot/code-scanning alerts", "code-scanning not-applicable/no-analysis state", "remaining risks"]));
 check("evidence receipt preserves CodeQL evidence", includesAll(files.evidenceReceipt, ["Runtime app code scanning", ".github/workflows/codeql.yml", "CodeQL JavaScript analysis", "PASS_WITH_LIMITATIONS"]));
-check("CodeQL workflow scans JavaScript with security events", includesAll(files.codeqlWorkflow, ["github/codeql-action/init@v4", "github/codeql-action/analyze@v4", "languages: javascript-typescript", "security-events: write"]));
+check("CodeQL workflow scans JavaScript with security events", includesAll(files.codeqlWorkflow, ["github/codeql-action/init@v4", "github/codeql-action/analyze@v4", "languages: javascript-typescript", "security-events: write", "config-file: ./.github/codeql/codeql-config.yml"]));
+check("CodeQL config excludes tests and generated residue", includesAll(files.codeqlConfig, ["paths-ignore:", "tests/**", "node_modules/**", "test-results/**", "playwright-report/**"]));
 check("evidence receipt preserves input accessibility evidence", includesAll(files.evidenceReceipt, ["Input Accessibility Evidence", "keyboard-only", "mouse/pointer-only", "touch-only", "focus-return checks", "labels/ARIA review", "Input accessibility"]));
 check("evidence receipt preserves recovery and data safety evidence", includesAll(files.evidenceReceipt, ["Recovery And Data Safety Evidence", "encrypted backup", "key vault", "corrupt-state", "Normal export must stay key-free", "Recovery/data safety"]));
 check("evidence receipt preserves provider currentness evidence", includesAll(files.evidenceReceipt, ["Provider Currentness Evidence", "preset source URL", "source date", "Free/testing labels", "free-forever availability", "CORS success", "downgrade public claims"]));

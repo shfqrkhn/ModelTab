@@ -1373,14 +1373,21 @@ function renderWorkspaceTrace() {
 
 function renderWorkspaceFileTree() {
   if (!workspaceFileEntries.length) {
-    dom.workspaceFileSelect.innerHTML = `<option value="">Run List Files to populate file navigation</option>`;
+    const option = document.createElement("option");
+    option.value = "";
+    option.textContent = "Run List Files to populate file navigation";
+    dom.workspaceFileSelect.replaceChildren(option);
     dom.workspaceFileSelect.disabled = true;
     return;
   }
   dom.workspaceFileSelect.disabled = false;
-  dom.workspaceFileSelect.innerHTML = workspaceFileEntries
-    .map((entry) => `<option value="${escapeAttr(entry.path)}" ${entry.kind === "directory" ? "disabled" : ""}>${escapeHtml(`${"  ".repeat(entry.depth)}${entry.kind === "directory" ? "▸ " : "  "}${entry.path}`)}</option>`)
-    .join("");
+  dom.workspaceFileSelect.replaceChildren(...workspaceFileEntries.map((entry) => {
+    const option = document.createElement("option");
+    option.value = entry.path;
+    option.disabled = entry.kind === "directory";
+    option.textContent = `${"  ".repeat(entry.depth)}${entry.kind === "directory" ? "▸ " : "  "}${entry.path}`;
+    return option;
+  }));
 }
 
 function shortTime(value) {
@@ -1389,14 +1396,20 @@ function shortTime(value) {
 }
 
 function renderProviderSelectors() {
-  const options = state.providers
-    .map((provider) => `<option value="${escapeAttr(provider.id)}">${escapeHtml(provider.name)} · ${provider.type}</option>`)
-    .join("");
-  dom.providerSelect.innerHTML = options;
-  dom.settingsProviderSelect.innerHTML = options;
-  dom.providerPresetSelect.innerHTML = PROVIDER_PRESETS
-    .map((preset) => `<option value="${escapeAttr(preset.id)}">${escapeHtml(presetLabel(preset))}</option>`)
-    .join("");
+  const providerOptions = state.providers.map((provider) => {
+    const option = document.createElement("option");
+    option.value = provider.id;
+    option.textContent = `${provider.name} · ${provider.type}`;
+    return option;
+  });
+  dom.providerSelect.replaceChildren(...providerOptions.map((option) => option.cloneNode(true)));
+  dom.settingsProviderSelect.replaceChildren(...providerOptions);
+  dom.providerPresetSelect.replaceChildren(...PROVIDER_PRESETS.map((preset) => {
+    const option = document.createElement("option");
+    option.value = preset.id;
+    option.textContent = presetLabel(preset);
+    return option;
+  }));
   dom.providerSelect.value = state.activeProviderId;
   dom.settingsProviderSelect.value = state.activeProviderId;
   const provider = activeProvider();
@@ -4381,18 +4394,6 @@ function renderInline(text) {
   html = html.replace(/\*([^*]+)\*/g, "<em>$1</em>");
   html = html.replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
   return html;
-}
-
-function deepMerge(target, source) {
-  for (const [key, value] of Object.entries(source || {})) {
-    if (UNSAFE_OBJECT_KEYS.has(key)) continue;
-    if (isMergeableObject(value) && isMergeableObject(target[key])) {
-      deepMerge(target[key], value);
-    } else {
-      target[key] = value;
-    }
-  }
-  return target;
 }
 
 function titleFrom(text) {
