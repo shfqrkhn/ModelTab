@@ -947,6 +947,7 @@ select:focus {
 }
 
 #promptInput {
+  height: 60px;
   min-height: 60px;
   max-height: 34vh;
   overflow-x: hidden;
