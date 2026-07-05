@@ -22,6 +22,12 @@ This public-safe receipt keeps ModelTab claims tied to evidence instead of chat 
 - If current evidence is stale, missing, inaccessible, or contradicted by provider/source/repo/GitHub state, downgrade the affected claim to `NOT_RUN`, `BLOCKED`, or `NO_GO`.
 - Do not preserve old status snapshots as proof after provider presets, source dates, workspace authority, key handling, workflows, or public privacy wording changes.
 
+## Safe-To-Publish Receipt
+
+- Mark this repo safe to publish only when the current pass proves a clean synced tree, no GitHub Releases, no protected tracked paths, no open security/dependabot alerts, passing required gates, and working live or repository-ZIP distribution surface.
+- If any proof is missing, stale, or contradicted by GitHub/repo/provider state, record the repo as `PASS_WITH_LIMITATIONS`, `NOT_RUN`, `BLOCKED`, or `NO_GO` instead of safe.
+- The final status table must name remaining risks rather than implying safety from silence.
+
 ## Claim Boundaries
 
 | Area | Class | Evidence | Limit |
