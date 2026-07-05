@@ -21,6 +21,14 @@ Maintain ModelTab as the flagship no-install BYOK AI chat PWA. It must remain st
 - Avoid JS popup APIs; use in-app UI and toasts.
 - Treat OmniOS/OmniDevOS materials in the local GH workspace docs bundle as private process references only. Do not expand ModelTab scope from those files unless the user explicitly requests product work.
 
+## OmniOS Transfer Contract
+
+- Product truth: static BYOK AI chat PWA with direct user-selected provider calls, not a hosted proxy or bundled-key service.
+- Execution truth: preserve provider, workspace, cleaner, export/import, local-file, visual, and live gates before publishing.
+- Evidence truth: use `docs/EVIDENCE_RECEIPT.md`, provider source dates, sanitized test output, and static/provider/workspace tests; public claims must stay within `PASS` or `PASS_WITH_LIMITATIONS`.
+- Operations truth: live Pages or current main repository ZIP are the only distribution paths; GitHub Releases stay absent.
+- Transfer truth: update this handoff and the evidence receipt when provider presets, workspace authority, key handling, or public-surface guarantees change.
+
 ## Key Files
 
 - `index.html`: app shell.
