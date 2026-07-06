@@ -39,6 +39,7 @@ This public-safe receipt keeps ModelTab claims tied to evidence instead of chat 
 ## Design Language Evidence
 
 - UI changes must preserve a modern minimalist, utilitarian, professional, joyful, responsive, BYOK-chat-contextual design language with local CSS/tokens, semantic native controls, visible focus, reduced-motion-safe transitions, no horizontal overflow, and no component overlap.
+- Signature Ecosystem Evidence: ModelTab must look and feel like part of the shared `shfqrkhn` ecosystem while staying contextual to provider setup, private local workspaces, and BYOK chat.
 - MIT UI libraries/resources such as Uiverse, Open Props, Primer, Radix Colors, Pico CSS, Heroicons, Bootstrap Icons, Floating UI, or A11y Dialog are inspiration sources only unless a source-backed, license-checked, tested need justifies a dependency.
 - Reject browser JS popups, blocking overlays, arbitrary component copy-paste, mixed visual systems, unbounded animation, external CDNs, or styling that weakens provider/key/workspace safety.
 
@@ -75,6 +76,7 @@ This public-safe receipt keeps ModelTab claims tied to evidence instead of chat 
 | Input accessibility | `PASS_WITH_LIMITATIONS` | visual tests, provider smoke tests, live smoke, static labels/ARIA checks | Does not certify screen-reader behavior or every assistive technology/browser pairing. |
 | Single input operation | `PASS_WITH_LIMITATIONS` | input accessibility evidence, visual/provider/live checks, no browser popup policy | Does not certify every OS assistive technology or unusual HID/browser pairing. |
 | Design language/UI safety | `PASS_WITH_LIMITATIONS` | handoff/evidence docs, static tests, visual/provider/live checks where run | Does not certify every viewport or assistive technology; contextual BYOK/workspace surfaces may differ from other repos. |
+| Signature ecosystem fit | `PASS_WITH_LIMITATIONS` | shared signature design system reference, design evidence, static/visual/provider/live tests | Does not require identical UI components; provider setup and workspace flows remain domain-specific. |
 | Recovery/data safety | `PASS_WITH_LIMITATIONS` | provider smoke tests, key-free export tests, encrypted backup tests, corrupt-state recovery tests | Does not guarantee recovery from browser profile loss or provider-side data retention. |
 | Mission-critical reliability | `PASS_WITH_LIMITATIONS` | mission-critical reliability evidence, provider/workspace/static/visual tests | Does not make provider networks, browsers, models, local files, or user devices mission-critical infrastructure. |
 
