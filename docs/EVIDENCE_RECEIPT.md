@@ -31,15 +31,29 @@ This public-safe receipt keeps ModelTab claims tied to evidence instead of chat 
 
 ## Input Accessibility Evidence
 
-- Critical chat, provider, cleaner, workspace, import/export, and settings workflows must remain usable by keyboard-only, mouse/pointer-only, and touch-only users.
-- Accessibility claims require current evidence from visual/provider/live tests, focus-return checks, labels/ARIA review, visible feedback checks, and tap-target/no-overflow checks where applicable.
-- If a workflow lacks direct input-mode coverage, label it `PASS_WITH_LIMITATIONS` or `NOT_RUN`; do not claim full accessibility from layout tests alone.
+- After setup, critical chat, provider, cleaner, workspace, import/export, and settings workflows must remain fully usable with one available input mode: keyboard only, mouse/pointer only, touch only, or platform-limited input only.
+- No critical workflow may require a combined keyboard-plus-pointer, keyboard-plus-touch, hover-plus-keyboard, drag-plus-keyboard, or browser-popup path.
+- Accessibility claims require current evidence from visual/provider/live tests, focus-return checks, labels/ARIA review, visible feedback checks, platform text-entry support, and tap-target/no-overflow checks where applicable.
+- If keyboard-only, mouse-only, touch-only, or platform-limited operation is not directly covered, label it `PASS_WITH_LIMITATIONS` or `NOT_RUN`; do not claim full accessibility from layout tests alone.
+
+## Design Language Evidence
+
+- UI changes must preserve a modern minimalist, utilitarian, professional, joyful, responsive, BYOK-chat-contextual design language with local CSS/tokens, semantic native controls, visible focus, reduced-motion-safe transitions, no horizontal overflow, and no component overlap.
+- MIT UI libraries/resources such as Uiverse, Open Props, Primer, Radix Colors, Pico CSS, Heroicons, Bootstrap Icons, Floating UI, or A11y Dialog are inspiration sources only unless a source-backed, license-checked, tested need justifies a dependency.
+- Reject browser JS popups, blocking overlays, arbitrary component copy-paste, mixed visual systems, unbounded animation, external CDNs, or styling that weakens provider/key/workspace safety.
 
 ## Recovery And Data Safety Evidence
 
 - Import, export, encrypted backup, key vault, corrupt-state, quota, reset/wipe, and workspace-trace recovery claims must remain fail-closed and tied to current provider, visual, local-file, or static tests.
 - Normal export must stay key-free; full backup may include keys only through explicit encrypted user action; stale session keys and saved vaults must not silently attach to key-free imports.
 - If a recovery path lacks current coverage, label it `PASS_WITH_LIMITATIONS` or `NOT_RUN`; do not imply cloud backup, remote recovery, or provider-side data control.
+
+## Mission-Critical Reliability Evidence
+
+- Critical BYOK, provider, workspace, cleaner, import/export, and settings workflows must stay self-checking, crash-recoverable, state-explicit, modular, maintainable, simple, one-input accessible, and TDD/SDD-backed.
+- Runtime failures must fail closed with sanitized in-app status, preserved user control, no browser popup APIs, no hidden upload, and no silent key or workspace-data exposure.
+- New complexity is acceptable only when it directly improves resilience, usability, state clarity, security, or maintainability and is covered by current tests or explicit evidence.
+- Autonomous AI-assisted development must start from current files, add or update tests before broad behavior changes, keep claims inside evidence boundaries, and leave a reproducible recovery path.
 
 ## Provider Currentness Evidence
 
@@ -59,7 +73,10 @@ This public-safe receipt keeps ModelTab claims tied to evidence instead of chat 
 | AI Studio Cleaner integration | `PASS_WITH_LIMITATIONS` | static tests and bundled cleaner checks | Cleaner remains a local bundled tool, not a remote service. |
 | Repository ZIP safety | `PASS_WITH_LIMITATIONS` | `docs/REPO_ZIP_POLICY.md`, `git archive`, static tests | Recheck no keys, exports, logs, workspace data, or provider payloads are bundled. |
 | Input accessibility | `PASS_WITH_LIMITATIONS` | visual tests, provider smoke tests, live smoke, static labels/ARIA checks | Does not certify screen-reader behavior or every assistive technology/browser pairing. |
+| Single input operation | `PASS_WITH_LIMITATIONS` | input accessibility evidence, visual/provider/live checks, no browser popup policy | Does not certify every OS assistive technology or unusual HID/browser pairing. |
+| Design language/UI safety | `PASS_WITH_LIMITATIONS` | handoff/evidence docs, static tests, visual/provider/live checks where run | Does not certify every viewport or assistive technology; contextual BYOK/workspace surfaces may differ from other repos. |
 | Recovery/data safety | `PASS_WITH_LIMITATIONS` | provider smoke tests, key-free export tests, encrypted backup tests, corrupt-state recovery tests | Does not guarantee recovery from browser profile loss or provider-side data retention. |
+| Mission-critical reliability | `PASS_WITH_LIMITATIONS` | mission-critical reliability evidence, provider/workspace/static/visual tests | Does not make provider networks, browsers, models, local files, or user devices mission-critical infrastructure. |
 
 ## Required Before Public-Facing Change
 

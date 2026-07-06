@@ -17,7 +17,7 @@ Maintain ModelTab as the flagship no-install BYOK AI chat PWA. It must remain st
 - Keep normal export key-free. Full backup may include keys only through explicit encrypted user action.
 - Keep AI Studio Cleaner integrated under `tools/ai-studio-cleaner/`; do not revive it as a separate app surface.
 - Keep optional Workspace Agent Mode opt-in, selected-folder scoped, read-only by default, trace-visible, and fail-closed when no verified tool trace exists.
-- Keep all critical workflows usable by keyboard-only, mouse-only, and touch-only input.
+- Keep all critical workflows usable with one available input mode after setup: keyboard only, mouse/pointer only, touch only, or platform-limited input only.
 - Avoid JS popup APIs; use in-app UI and toasts.
 - Treat OmniOS/OmniDevOS materials in the local GH workspace docs bundle as private process references only. Do not expand ModelTab scope from those files unless the user explicitly requests product work.
 
@@ -27,6 +27,9 @@ Maintain ModelTab as the flagship no-install BYOK AI chat PWA. It must remain st
 - Execution truth: preserve provider, workspace, cleaner, export/import, local-file, visual, and live gates before publishing.
 - Evidence truth: use `docs/EVIDENCE_RECEIPT.md`, provider source dates, sanitized test output, and static/provider/workspace tests; public claims must stay within `PASS` or `PASS_WITH_LIMITATIONS`.
 - Operations truth: live Pages or current main repository ZIP are the only distribution paths; GitHub Releases stay absent.
+- Reliability truth: keep BYOK, provider, workspace, cleaner, import/export, and settings paths self-checking, crash-recoverable, state-explicit, modular, maintainable, simple, one-input accessible, and TDD/SDD-backed; remove complexity that does not improve resilience or usability.
+- Design truth: keep UI changes modern minimalist, utilitarian, professional, joyful, responsive, and contextual to BYOK chat/workspace workflows; use local CSS/tokens and native controls first, treat MIT UI libraries/resources as inspiration only unless a source-backed need justifies a dependency, and reject browser JS popups, blocking overlays, overlapping components, inaccessible controls, unbounded motion, or arbitrary component copy-paste.
+- Single input truth: after setup, critical BYOK chat, provider, cleaner, workspace, import/export, and settings workflows must remain fully operable by keyboard only, mouse/pointer only, touch only, or platform-limited input only; never require a combined input-mode path.
 - Transfer truth: update this handoff and the evidence receipt when provider presets, workspace authority, key handling, or public-surface guarantees change.
 
 ## Doctrine Delta Decision
