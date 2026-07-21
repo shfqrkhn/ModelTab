@@ -56,6 +56,16 @@ const BLOCKED_EXTRA_BODY_TOP_LEVEL_KEYS = new Set([
   "stream"
 ]);
 const HEADER_NAME_PATTERN = /^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$/;
+const ProviderModule = globalThis.ModelTabProvider;
+const PersistenceModule = globalThis.ModelTabPersistence;
+const EncryptedBackupModule = globalThis.ModelTabEncryptedBackup;
+const WorkspaceModule = globalThis.ModelTabWorkspace;
+const ChatStateModule = globalThis.ModelTabChatState;
+if (!ProviderModule) throw new Error("ModelTab provider module failed to load.");
+if (!PersistenceModule) throw new Error("ModelTab persistence module failed to load.");
+if (!EncryptedBackupModule) throw new Error("ModelTab encrypted-backup module failed to load.");
+if (!WorkspaceModule) throw new Error("ModelTab workspace module failed to load.");
+if (!ChatStateModule) throw new Error("ModelTab chat-state module failed to load.");
 const SETTINGS_OVERLAY_MEDIA = window.matchMedia("(max-width: 1600px)");
 const SIDEBAR_OVERLAY_MEDIA = window.matchMedia("(max-width: 980px)");
 
@@ -952,10 +962,10 @@ function loadState() {
   let raw = "";
   try {
     migrateLegacyStorage();
-    raw = localStorage.getItem(STORAGE_KEY);
+    raw = localStorage.getItem(STORAGE_KEY) || "";
     if (!raw) return normalizeState(structuredClone(DEFAULT_STATE));
-    const parsed = JSON.parse(raw);
-    assertSafeObjectKeys(parsed);
+    const loaded = PersistenceModule.readState(localStorage, STORAGE_KEY, assertSafeObjectKeys);
+    const parsed = loaded.value;
     return normalizeState({
       ...structuredClone(DEFAULT_STATE),
       ...parsed,
@@ -975,26 +985,23 @@ function loadState() {
 }
 
 function quarantineCorruptState(raw, error) {
-  if (!raw) return;
-  try {
-    localStorage.setItem(RECOVERY_KEY, JSON.stringify({
-      savedAt: new Date().toISOString(),
-      reason: compact(error?.message || "State could not be loaded.", 200),
-      raw: String(raw).slice(0, MAX_IMPORT_BYTES)
-    }));
-    loadStateRecoveryMessage = "Saved local data could not be loaded. ModelTab restored defaults and kept a local recovery snapshot in this browser.";
-  } catch {
-    loadStateRecoveryMessage = "Saved local data could not be loaded. ModelTab restored defaults.";
-  }
+  loadStateRecoveryMessage = PersistenceModule.quarantineCorruptState(
+    localStorage,
+    RECOVERY_KEY,
+    raw,
+    error,
+    MAX_IMPORT_BYTES,
+    compact
+  );
 }
 
 function migrateLegacyStorage() {
-  if (!localStorage.getItem(STORAGE_KEY) && localStorage.getItem(LEGACY_STORAGE_KEY)) {
-    localStorage.setItem(STORAGE_KEY, localStorage.getItem(LEGACY_STORAGE_KEY));
-  }
-  if (!localStorage.getItem(VAULT_KEY) && localStorage.getItem(LEGACY_VAULT_KEY)) {
-    localStorage.setItem(VAULT_KEY, localStorage.getItem(LEGACY_VAULT_KEY));
-  }
+  PersistenceModule.migrateLegacyStorage(localStorage, {
+    state: STORAGE_KEY,
+    vault: VAULT_KEY,
+    legacyState: LEGACY_STORAGE_KEY,
+    legacyVault: LEGACY_VAULT_KEY
+  });
 }
 
 function normalizeState(nextState) {
@@ -1082,45 +1089,19 @@ function normalizeSettings(settings = {}) {
 }
 
 function normalizeWorkspace(workspace = {}) {
-  return {
-    enabled: Boolean(workspace.enabled),
-    shareTrace: Boolean(workspace.shareTrace),
-    folderName: String(workspace.folderName || ""),
-    trace: Array.isArray(workspace.trace)
-      ? workspace.trace.map(normalizeWorkspaceTrace).filter(Boolean).slice(-WORKSPACE_TRACE_LIMIT)
-      : []
-  };
+  return WorkspaceModule.normalizeWorkspace(workspace, { safeId, compact, traceLimit: WORKSPACE_TRACE_LIMIT });
 }
 
 function normalizeWorkspaceTrace(entry) {
-  if (!entry || typeof entry !== "object") return null;
-  return {
-    id: safeId(entry.id),
-    createdAt: String(entry.createdAt || new Date().toISOString()),
-    tool: compact(String(entry.tool || "workspace.tool"), 80),
-    input: compact(String(entry.input || ""), 240),
-    output: compactWorkspaceOutput(entry.output, 4000),
-    ok: entry.ok !== false
-  };
+  return WorkspaceModule.normalizeTrace(entry, { safeId, compact });
 }
 
 function compactWorkspaceOutput(value, length) {
-  const text = compactWhitespace(value);
-  return text.length > length ? `${text.slice(0, Math.max(0, length - 1))}…` : text;
+  return WorkspaceModule.compactOutput(value, length);
 }
 
 function normalizeMessage(message) {
-  if (!message || typeof message !== "object") return null;
-  return {
-    id: safeId(message.id),
-    role: message.role === "user" ? "user" : "assistant",
-    content: String(message.content || ""),
-    attachments: Array.isArray(message.attachments) ? message.attachments.filter(isSafeAttachment) : [],
-    provider: message.provider ? String(message.provider) : undefined,
-    model: message.model ? String(message.model) : undefined,
-    error: Boolean(message.error),
-    createdAt: String(message.createdAt || new Date().toISOString())
-  };
+  return ChatStateModule.normalizeMessage(message, { safeId, isSafeAttachment });
 }
 
 function normalizePromptLibrary(library) {
@@ -1222,37 +1203,17 @@ function isSafeAttachment(attachment) {
 }
 
 function saveState() {
-  const clean = structuredClone(state);
-  clean.providers.forEach((provider) => delete provider.apiKey);
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(clean));
-    return "ok";
-  } catch {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(stripAttachmentPayloads(clean)));
-      setStatus("Local storage was full. ModelTab preserved text state and skipped stored image payloads.", true);
-      return "stripped";
-    } catch {
-      setStatus("Local storage failed. Export data before closing this tab.", true);
-      return "failed";
-    }
+  const result = PersistenceModule.saveState(localStorage, STORAGE_KEY, state, stripAttachmentPayloads);
+  if (result === "stripped") {
+    setStatus("Local storage was full. ModelTab preserved text state and skipped stored image payloads.", true);
+  } else if (result === "failed") {
+    setStatus("Local storage failed. Export data before closing this tab.", true);
   }
+  return result;
 }
 
 function stripAttachmentPayloads(cleanState) {
-  const slim = structuredClone(cleanState);
-  for (const chat of slim.conversations || []) {
-    for (const message of chat.messages || []) {
-      message.attachments = (message.attachments || []).map((attachment) => ({
-        id: attachment.id,
-        name: attachment.name,
-        type: attachment.type,
-        size: attachment.size,
-        omitted: true
-      }));
-    }
-  }
-  return slim;
+  return ChatStateModule.stripAttachmentPayloads(cleanState);
 }
 
 function createConversation(render = true) {
@@ -1567,42 +1528,15 @@ function promptSort(a, b) {
 }
 
 function normalizeEndpointUrl(value) {
-  const url = parseUrl(value);
-  if (!url) return "";
-  return `${url.protocol}//${url.host}${url.pathname.replace(/\/+$/, "")}`;
+  return ProviderModule.normalizeEndpointUrl(value);
 }
 
 function normalizeProviderBaseUrl(baseUrl, type = "openai") {
-  const raw = String(baseUrl || "").trim();
-  if (!raw) return "";
-  const url = parseUrl(raw);
-  if (!url || !["http:", "https:"].includes(url.protocol)) {
-    throw new Error("Provider base URL must start with http:// or https://.");
-  }
-  url.hash = "";
-  url.search = "";
-  url.pathname = normalizeProviderPath(url.pathname, type);
-  return trimSlash(url.href);
+  return ProviderModule.normalizeBaseUrl(baseUrl, type);
 }
 
 function normalizeProviderPath(pathname, type = "openai") {
-  const suffixes = type === "gemini"
-    ? ["/models"]
-    : ["/chat/completions", "/completions", "/responses", "/models"];
-  let pathnameRoot = String(pathname || "/").replace(/\/+$/g, "") || "/";
-  let changed = true;
-  while (changed) {
-    changed = false;
-    const lowerPath = pathnameRoot.toLowerCase();
-    for (const suffix of suffixes) {
-      if (lowerPath.endsWith(suffix)) {
-        pathnameRoot = pathnameRoot.slice(0, -suffix.length).replace(/\/+$/g, "") || "/";
-        changed = true;
-        break;
-      }
-    }
-  }
-  return pathnameRoot;
+  return ProviderModule.normalizePath(pathname, type);
 }
 
 function renderConversationList() {
@@ -2364,25 +2298,15 @@ function workspacePathParts(filePath) {
 }
 
 function normalizeWorkspacePath(filePath) {
-  const normalized = String(filePath || "").replaceAll("\\", "/").split("/").filter(Boolean);
-  if (normalized.some((part) => !safeWorkspaceName(part))) throw new Error("Workspace path must stay inside the selected folder.");
-  return normalized.join("/");
+  return WorkspaceModule.normalizePath(filePath);
 }
 
 function safeWorkspaceName(name) {
-  return Boolean(name) && name !== "." && name !== ".." && !/[\\/]/.test(name);
+  return WorkspaceModule.safeName(name);
 }
 
 function isProbablyText(bytes) {
-  const limit = Math.min(bytes.length, 4096);
-  if (!limit) return true;
-  let suspicious = 0;
-  for (let index = 0; index < limit; index += 1) {
-    const byte = bytes[index];
-    if (byte === 0) return false;
-    if (byte < 7 || (byte > 14 && byte < 32)) suspicious += 1;
-  }
-  return suspicious / limit < 0.02;
+  return WorkspaceModule.isProbablyText(bytes);
 }
 
 async function sha256Hex(buffer) {
@@ -3355,40 +3279,15 @@ async function runAssistant(chat) {
 }
 
 function chatForRequest(chat, pendingAssistantId) {
-  const messages = trimMessagesForRequest(chat.messages.filter((message) => {
-    if (message.id === pendingAssistantId || message.error) return false;
-    if (message.role === "assistant") return Boolean(message.content?.trim());
-    return message.role === "user";
-  }), chat);
-  return {
-    ...chat,
-    messages
-  };
+  return ChatStateModule.chatForRequest(chat, pendingAssistantId, state.settings, compactWhitespace, estimateRequestTokens);
 }
 
 function trimMessagesForRequest(messages, chat = activeConversation()) {
-  let requestMessages = [...messages];
-  if (state.settings.autoTrim) {
-    const maxMessages = Math.max(1, state.settings.recentTurns * 2);
-    requestMessages = requestMessages.slice(-maxMessages);
-  }
-  requestMessages = requestMessages
-    .map((message, index) => requestMessageCopy(message, index === requestMessages.length - 1))
-    .filter((message) => message.content || message.attachments?.length || message.role === "assistant");
-  if (!state.settings.autoTrim) return requestMessages;
-  while (requestMessages.length > 1 && estimateRequestTokens(requestMessages, chat) > state.settings.maxInputTokens) {
-    requestMessages.shift();
-  }
-  return requestMessages;
+  return ChatStateModule.trimMessagesForRequest(messages, chat, state.settings, compactWhitespace, estimateRequestTokens);
 }
 
 function requestMessageCopy(message, isLatest) {
-  const keepAttachments = state.settings.historyImages || isLatest;
-  return {
-    ...message,
-    content: compactWhitespace(message.content || ""),
-    attachments: keepAttachments ? (message.attachments || []) : []
-  };
+  return ChatStateModule.requestMessageCopy(message, isLatest, state.settings, compactWhitespace);
 }
 
 function stopGeneration() {
@@ -3571,31 +3470,20 @@ function workspaceTraceForModel() {
 }
 
 function workspaceModelTraceEntries() {
-  if (!state.workspace.enabled || !workspaceDirectoryHandle) return [];
-  return state.workspace.trace.filter((entry) => (
-    entry?.ok
-    && WORKSPACE_MODEL_TRACE_TOOLS.has(entry.tool)
-    && String(entry.output || "").trim()
-  ));
+  return WorkspaceModule.verifiedTraceEntries(state.workspace, Boolean(workspaceDirectoryHandle), WORKSPACE_MODEL_TRACE_TOOLS);
 }
 
 async function workspaceFailClosedReason(text) {
-  if (!state.workspace.enabled || !workspacePromptNeedsVerifiedTrace(text)) return "";
-  if (!state.workspace.shareTrace) {
-    return "Workspace Agent Mode will not answer about local files yet because trace sharing is off. Turn on \"Send visible tool trace snippets with chat\", run List Files, Search, or Inspect File, then send again.";
-  }
-  if (!workspaceDirectoryHandle) {
-    return "Workspace Agent Mode will not answer about local files yet because no live workspace folder is connected. Select Folder, run List Files, Search, or Inspect File, then send again.";
-  }
-  const permission = await workspaceReadPermissionState();
-  if (permission !== "granted") {
-    disconnectWorkspaceHandle();
-    return "Workspace Agent Mode will not answer about local files because browser read permission is not granted. Select Folder again, run a read-only tool, then send again.";
-  }
-  if (!workspaceModelTraceEntries().length) {
-    return "Workspace Agent Mode will not guess about local files without verified tool output. Run List Files, Search, or Inspect File so the visible trace shows what was actually inspected, then send again.";
-  }
-  return "";
+  return WorkspaceModule.failClosedReason({
+    enabled: state.workspace.enabled,
+    text,
+    intentPattern: WORKSPACE_INTENT_PATTERN,
+    shareTrace: state.workspace.shareTrace,
+    hasLiveHandle: Boolean(workspaceDirectoryHandle),
+    readPermission: workspaceReadPermissionState,
+    onPermissionDenied: disconnectWorkspaceHandle,
+    hasVerifiedTrace: () => Boolean(workspaceModelTraceEntries().length)
+  });
 }
 
 async function workspaceReadPermissionState() {
@@ -3611,16 +3499,11 @@ async function workspaceReadPermissionState() {
 }
 
 function workspacePromptNeedsVerifiedTrace(text) {
-  return WORKSPACE_INTENT_PATTERN.test(String(text || ""));
+  return WorkspaceModule.promptNeedsVerifiedTrace(text, WORKSPACE_INTENT_PATTERN);
 }
 
 function compactWorkspaceTraceForModel(value, limit) {
-  return String(value || "")
-    .replace(/\r\n?/g, "\n")
-    .replace(/[ \t]+/g, " ")
-    .replace(/\n{3,}/g, "\n\n")
-    .trim()
-    .slice(0, limit);
+  return WorkspaceModule.compactTraceForModel(value, limit);
 }
 
 function requestTokenSummary(chat) {
@@ -3700,22 +3583,7 @@ function extraBodyValidationTarget(type) {
 }
 
 function mergeExtraBody(target, source, path = []) {
-  for (const [key, value] of Object.entries(source || {})) {
-    const fieldPath = [...path, key];
-    if (!path.length && BLOCKED_EXTRA_BODY_TOP_LEVEL_KEYS.has(key)) {
-      throw new Error(`Extra request body cannot override core request field: ${fieldPath.join(".")}.`);
-    }
-    if (Object.hasOwn(target, key)) {
-      if (isMergeableObject(value) && isMergeableObject(target[key])) {
-        mergeExtraBody(target[key], value, fieldPath);
-      } else {
-        throw new Error(`Extra request body cannot override core request field: ${fieldPath.join(".")}.`);
-      }
-    } else {
-      target[key] = value;
-    }
-  }
-  return target;
+  return ProviderModule.mergeExtraBody(target, source, path, BLOCKED_EXTRA_BODY_TOP_LEVEL_KEYS, isMergeableObject);
 }
 
 function buildHeaders(provider, key, json = true, gemini = false) {
@@ -3735,20 +3603,11 @@ function buildHeaders(provider, key, json = true, gemini = false) {
 }
 
 function parseHeaders(raw) {
-  if (!raw?.trim()) return {};
-  const parsed = parseJsonObject(raw, "Extra headers");
-  const headers = {};
-  for (const [key, value] of Object.entries(parsed)) {
-    const name = key.trim();
-    const normalized = name.toLowerCase();
-    if (!HEADER_NAME_PATTERN.test(name) || RESERVED_EXTRA_HEADERS.has(normalized) || value === null || typeof value === "object") {
-      throw new Error("Extra headers must use safe, non-reserved string values.");
-    }
-    const text = String(value);
-    if (/[\r\n]/.test(text)) throw new Error("Extra headers must use safe, non-reserved string values.");
-    headers[name] = text;
-  }
-  return headers;
+  return ProviderModule.parseHeaders(raw, {
+    parseJsonObject,
+    reservedHeaders: RESERVED_EXTRA_HEADERS,
+    headerNamePattern: HEADER_NAME_PATTERN
+  });
 }
 
 function safeExtraHeaders(value) {
@@ -3831,7 +3690,7 @@ function getProviderKey(provider) {
 }
 
 function providerNeedsKey(provider) {
-  return Boolean(provider) && !provider.noAuth;
+  return ProviderModule.providerNeedsKey(provider);
 }
 
 function providerSelectionStatus(provider) {
@@ -3853,13 +3712,11 @@ function cloudProviderNotice(provider) {
 }
 
 function hasBaseUrlPlaceholder(baseUrl) {
-  const value = String(baseUrl || "");
-  return /YOUR-|api\.example\.com|192\.168\.1\.100/i.test(value);
+  return ProviderModule.hasBaseUrlPlaceholder(baseUrl);
 }
 
 function endpointLikelyLocalNoAuth(baseUrl) {
-  const url = parseUrl(baseUrl);
-  return Boolean(url) && url.protocol === "http:" && (isLoopbackHost(url.hostname) || isPrivateNetworkHost(url.hostname));
+  return ProviderModule.endpointLikelyLocalNoAuth(baseUrl);
 }
 
 function isGenericProviderName(name) {
@@ -3867,37 +3724,19 @@ function isGenericProviderName(name) {
 }
 
 function parseUrl(value) {
-  try {
-    return new URL(String(value || "").trim());
-  } catch {
-    return null;
-  }
+  return ProviderModule.parseUrl(value);
 }
 
 function httpEndpointBlockedByPageSecurity(baseUrl) {
-  if (location.protocol !== "https:") return false;
-  try {
-    const url = new URL(baseUrl);
-    return url.protocol === "http:" && !isLoopbackHost(url.hostname);
-  } catch (error) {
-    return false;
-  }
+  return ProviderModule.httpEndpointBlockedByPageSecurity(baseUrl, location.protocol);
 }
 
 function isLoopbackHost(hostname) {
-  const host = String(hostname || "").replace(/^\[|\]$/g, "").toLowerCase();
-  return host === "localhost" || host.endsWith(".localhost") || host === "::1" || /^127\./.test(host);
+  return ProviderModule.isLoopbackHost(hostname);
 }
 
 function isPrivateNetworkHost(hostname) {
-  const host = String(hostname || "").replace(/^\[|\]$/g, "").toLowerCase();
-  if (host === "::1" || host.startsWith("fc") || host.startsWith("fd") || host.startsWith("fe80:")) return true;
-  const parts = host.split(".").map((part) => Number(part));
-  if (parts.length !== 4 || parts.some((part) => !Number.isInteger(part) || part < 0 || part > 255)) return false;
-  return parts[0] === 10
-    || (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31)
-    || (parts[0] === 192 && parts[1] === 168)
-    || (parts[0] === 169 && parts[1] === 254);
+  return ProviderModule.isPrivateNetworkHost(hostname);
 }
 
 function setBusy(busy) {
@@ -4233,65 +4072,27 @@ function captureVisibleProviderKey() {
 }
 
 function sanitizeVault(vault) {
-  if (!vault || typeof vault !== "object" || Array.isArray(vault)) throw new Error("Invalid encrypted key vault.");
-  const clean = {
-    v: Number(vault.v),
-    kdf: String(vault.kdf || ""),
-    salt: String(vault.salt || ""),
-    iv: String(vault.iv || ""),
-    data: String(vault.data || "")
-  };
-  if (clean.v !== 1 || clean.kdf !== "PBKDF2-SHA256-210000") throw new Error("Unsupported key vault.");
-  if (!isBoundedBase64(clean.salt, 256) || !isBoundedBase64(clean.iv, 256) || !isBoundedBase64(clean.data, MAX_VAULT_B64_CHARS)) {
-    throw new Error("Invalid encrypted key vault.");
-  }
-  return clean;
+  return EncryptedBackupModule.sanitizeVault(vault, MAX_VAULT_B64_CHARS);
 }
 
 function isBoundedBase64(value, maxLength) {
-  return Boolean(value)
-    && value.length <= maxLength
-    && value.length % 4 === 0
-    && /^[A-Za-z0-9+/]+={0,2}$/.test(value);
+  return EncryptedBackupModule.isBoundedBase64(value, maxLength);
 }
 
 async function encryptJson(payload, passphrase) {
-  const salt = crypto.getRandomValues(new Uint8Array(16));
-  const iv = crypto.getRandomValues(new Uint8Array(12));
-  const key = await deriveKey(passphrase, salt);
-  const data = new TextEncoder().encode(JSON.stringify(payload));
-  const encrypted = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, data);
-  return {
-    v: 1,
-    kdf: "PBKDF2-SHA256-210000",
-    salt: bytesToBase64(salt),
-    iv: bytesToBase64(iv),
-    data: bytesToBase64(new Uint8Array(encrypted))
-  };
+  return EncryptedBackupModule.encryptJson(payload, passphrase);
 }
 
 async function decryptJson(vault, passphrase) {
-  const cleanVault = sanitizeVault(vault);
-  const salt = base64ToBytes(cleanVault.salt);
-  const iv = base64ToBytes(cleanVault.iv);
-  const key = await deriveKey(passphrase, salt);
-  const decrypted = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, base64ToBytes(cleanVault.data));
-  return JSON.parse(new TextDecoder().decode(decrypted));
+  return EncryptedBackupModule.decryptJson(vault, passphrase, MAX_VAULT_B64_CHARS);
 }
 
 async function deriveKey(passphrase, salt) {
-  const material = await crypto.subtle.importKey("raw", new TextEncoder().encode(passphrase), "PBKDF2", false, ["deriveKey"]);
-  return crypto.subtle.deriveKey(
-    { name: "PBKDF2", salt, iterations: 210000, hash: "SHA-256" },
-    material,
-    { name: "AES-GCM", length: 256 },
-    false,
-    ["encrypt", "decrypt"]
-  );
+  return EncryptedBackupModule.deriveKey(passphrase, salt);
 }
 
 function vaultCryptoAvailable() {
-  return Boolean(globalThis.crypto?.subtle && globalThis.crypto?.getRandomValues);
+  return EncryptedBackupModule.vaultCryptoAvailable();
 }
 
 function renderAttachmentStrip(attachments) {
@@ -4457,12 +4258,7 @@ function isSafeObjectKey(key) {
 }
 
 function sanitizeKeyMap(keys) {
-  const clean = {};
-  if (!keys || typeof keys !== "object" || Array.isArray(keys)) return clean;
-  for (const [id, key] of Object.entries(keys)) {
-    if (isSafeObjectKey(id) && typeof key === "string") clean[id] = key;
-  }
-  return clean;
+  return EncryptedBackupModule.sanitizeKeyMap(keys, isSafeObjectKey);
 }
 
 function isMergeableObject(value) {
@@ -4538,15 +4334,11 @@ function fileToDataUrl(file) {
 }
 
 function bytesToBase64(bytes) {
-  let binary = "";
-  bytes.forEach((byte) => {
-    binary += String.fromCharCode(byte);
-  });
-  return btoa(binary);
+  return EncryptedBackupModule.bytesToBase64(bytes);
 }
 
 function base64ToBytes(base64) {
-  return Uint8Array.from(atob(base64), (char) => char.charCodeAt(0));
+  return EncryptedBackupModule.base64ToBytes(base64);
 }
 
 function closeMobileSidebar() {

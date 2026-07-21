@@ -42,13 +42,15 @@ Maintain ModelTab as the flagship no-install BYOK AI chat PWA. It must remain st
 ## Key Files
 
 - `index.html`: app shell.
-- `app.js`: main state, provider, chat, settings, prompt, memory, workspace, and UI logic.
+- `app.js`: DOM orchestration, provider calls, settings, prompts, and compatibility wrappers.
+- `modules/`: file-mode-safe provider, persistence, encrypted-backup, workspace, and chat-state modules.
+- `docs/MODULE_ARCHITECTURE.md`: module contracts and incremental extraction workflow.
 - `styles.css`: responsive layout and visual system.
 - `workspace-worker.js`: selected-folder read-only tool layer.
 - `service-worker.js`: static/PWA cache.
 - `manifest.webmanifest`: install metadata.
 - `tools/ai-studio-cleaner/`: integrated cleaner.
-- `tests/`: static, visual, local-file, provider, worker, and live gates.
+- `tests/`: module, static, visual, local-file, provider, worker, and live gates.
 
 ## Required Checks
 

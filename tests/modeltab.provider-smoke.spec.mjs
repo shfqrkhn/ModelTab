@@ -259,7 +259,7 @@ test("workspace import resets live folder handles before stale trace can be used
   }, { providerUrl });
 
   await page.goto(appUrl);
-  await page.getByRole("button", { name: "Settings" }).click();
+  await page.getByRole("button", { name: "Settings", exact: true }).click();
   await page.locator("#workspaceSettingsDetails").evaluate((details) => { details.open = true; });
   await page.locator("#workspaceSelectBtn").click();
   await expect(page.locator("#workspaceStatus")).toContainText("Connected read-only folder");

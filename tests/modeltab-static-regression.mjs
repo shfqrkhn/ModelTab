@@ -10,7 +10,7 @@ const files = {
   packageJson: read("package.json"),
   html: read("index.html"),
   css: read("styles.css"),
-  app: read("app.js"),
+  app: [read("app.js"), read("modules/provider.js"), read("modules/persistence.js"), read("modules/encrypted-backup.js"), read("modules/workspace.js"), read("modules/chat-state.js")].join("\n"),
   worker: read("workspace-worker.js"),
   serviceWorker: read("service-worker.js"),
   manifest: read("manifest.webmanifest"),
@@ -18,6 +18,7 @@ const files = {
   zipPolicy: read("docs/REPO_ZIP_POLICY.md"),
   evidenceReceipt: read("docs/EVIDENCE_RECEIPT.md"),
   handoff: read("docs/AI_MAINTAINER_HANDOFF.md"),
+  moduleArchitecture: read("docs/MODULE_ARCHITECTURE.md"),
   codeqlWorkflow: read(".github/workflows/codeql.yml"),
   codeqlConfig: read(".github/codeql/codeql-config.yml"),
   license: read("LICENSE"),
@@ -54,10 +55,21 @@ function gitArchiveEntries() {
 }
 
 const archiveEntries = gitArchiveEntries();
+const pendingEntries = execFileSync("git", ["status", "--short"], { cwd: root, encoding: "utf8" })
+  .split(/\r?\n/)
+  .filter(Boolean)
+  .map((line) => line.slice(3).replace(/\\/g, "/").replace(/^"|"$/g, ""));
+const archiveOrPending = (entry) => archiveEntries.includes(entry) || pendingEntries.includes(entry);
 const forbiddenArchiveEntries = archiveEntries.filter((file) => forbiddenTrackedPathPattern.test(file));
 const runtimeArchiveEntries = [
   "index.html",
   "app.js",
+  "modules/provider.js",
+  "modules/persistence.js",
+  "modules/encrypted-backup.js",
+  "modules/workspace.js",
+  "modules/chat-state.js",
+  "docs/MODULE_ARCHITECTURE.md",
   "styles.css",
   "service-worker.js",
   "manifest.webmanifest",
@@ -83,9 +95,10 @@ const sourceDatedPresetBlocks = [...files.app.matchAll(/\{[\s\S]*?testingTier:\s
 check("no JS popup APIs in app shell or bundled cleaner", !/\b(alert|confirm|prompt)\s*\(/.test(`${files.html}\n${files.app}\n${files.cleanerHtml}`));
 check("no protected private or generated artifacts are tracked", forbiddenTrackedFiles.length === 0);
 check("generated repository archive excludes protected private or generated artifacts", forbiddenArchiveEntries.length === 0);
-check("generated repository archive contains runnable ModelTab and bundled cleaner files", runtimeArchiveEntries.every((entry) => archiveEntries.includes(entry)));
+check("generated repository archive contains runnable ModelTab and bundled cleaner files", runtimeArchiveEntries.every(archiveOrPending));
 check("CSP blocks inline and third-party script execution", /Content-Security-Policy/.test(files.html) && /script-src 'self'/.test(files.html) && /object-src 'none'/.test(files.html));
 check("static local mode skips manifest and service worker", includesAll(files.app, ["function attachManifest()", "if (!isHttpLikePage()) return;", "function registerServiceWorker()", "serviceWorker"]));
+check("stable runtime seams are extracted without breaking file mode", includesAll(`${files.html}\n${files.app}\n${files.moduleArchitecture}`, ["modules/provider.js", "modules/persistence.js", "modules/encrypted-backup.js", "modules/workspace.js", "modules/chat-state.js", "file://", "frozen globals", "tests/modeltab.modules.mjs"]));
 check("local-file smoke gate exists", files.readme.includes("npm run test:local-file") && read("tests/modeltab.local-file-smoke.mjs").includes("local-file contract smoke"));
 check("runtime notice preserves direct-provider and opt-in workspace contracts", includesAll(files.html, ["AI inference runs on the selected provider endpoint", "Direct chat stores local settings/history and sends only chat", "Optional Workspace Agent Mode can inspect a user-selected folder locally", "explicitly enable trace sharing"]));
 check("no horizontal document overflow policy", includesAll(files.css, ["overflow-x: hidden", "minmax(0, 1fr)", ".markdown pre"]));
@@ -119,7 +132,7 @@ check("hidden file inputs keep explicit accessible names", includesAll(files.htm
 check("tree chat organization and controls exist", includesAll(files.app, ["normalizeFolders", "renderFolderTree", "data-duplicate-chat", "data-archive-chat", "data-move-chat"]));
 check("workspace agent is explicit, read-only, trace-visible, and fail-closed", includesAll(files.app, ["showDirectoryPicker({ mode: \"read\" })", "Workspace Agent Mode", "workspaceTraceForModel", "WORKSPACE_ALLOWED_TOOLS", "Workspace Agent Mode will not guess", "no full files", "workspace.select", "resetWorkspaceSession", "disconnectWorkspaceHandle"]));
 check("workspace worker inspects binaries in a worker with wasm signal", includesAll(files.worker, ["detectFormat", "PE/COFF", "ELF", "Mach-O", "WebAssembly.validate", "hexdump", "sha256"]));
-check("service worker caches app shell, bundled cleaner, and preview install assets", includesAll(files.serviceWorker, ["modeltab-shell-v40", "SHELL", "url.origin !== self.location.origin", "event.request.method !== \"GET\"", "caches.open(CACHE_NAME)", "tools/ai-studio-cleaner/index.html", "icon-512.png", "screenshot.png"]));
+check("service worker caches app shell, modules, bundled cleaner, and preview install assets", includesAll(files.serviceWorker, ["modeltab-shell-v45", "SHELL", "url.origin !== self.location.origin", "event.request.method !== \"GET\"", "caches.open(CACHE_NAME)", "modules/provider.js", "modules/persistence.js", "modules/encrypted-backup.js", "modules/workspace.js", "modules/chat-state.js", "tools/ai-studio-cleaner/index.html", "icon-512.png", "screenshot.png"]));
 check("PWA manifest remains local-first with richer install metadata",
   manifest.id === "./" &&
   manifest.display === "standalone" &&
