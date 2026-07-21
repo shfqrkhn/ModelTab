@@ -60,6 +60,8 @@ Run relevant gates after material changes:
 npm run qa
 ```
 
+The Static Check workflow runs branch-local tests plus a live Pages smoke on pull requests. On `main` pushes, the live gate also waits for the deployed service-worker cache name to match the checked-out source, avoiding false failures while the Pages workflow finishes concurrently.
+
 Also perform a secret scan and verify no API keys, exports, encrypted backups, local chat data, screenshots with personal data, `node_modules`, `test-results`, or `playwright-report` are committed.
 
 ## Known Continuation Priorities
