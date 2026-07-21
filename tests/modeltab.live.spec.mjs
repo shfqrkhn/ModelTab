@@ -1,6 +1,14 @@
 import { test, expect } from "@playwright/test";
+import { readFileSync } from "node:fs";
 
 const liveUrl = process.env.MODELTAB_LIVE_URL || "https://shfqrkhn.github.io/ModelTab/";
+const requireCurrentDeployment = process.env.MODELTAB_REQUIRE_CURRENT_DEPLOYMENT === "true";
+const localServiceWorker = readFileSync(new URL("../service-worker.js", import.meta.url), "utf8");
+const expectedCacheName = localServiceWorker.match(/const CACHE_NAME = "([^"]+)";/)?.[1];
+
+if (!expectedCacheName) {
+  throw new Error("Unable to read the local ModelTab service-worker cache name.");
+}
 
 for (const viewport of [
   { width: 390, height: 844 },
@@ -85,10 +93,31 @@ test("live GitHub Pages PWA metadata and preview assets are deployed", async ({ 
   expect(html).toContain('rel="apple-touch-icon"');
   expect(html).toContain('name="application-name"');
 
-  const serviceWorkerResponse = await request.get(new URL("service-worker.js", liveUrl).href);
+  const serviceWorkerUrl = new URL("service-worker.js", liveUrl).href;
+  if (requireCurrentDeployment) {
+    await expect
+      .poll(
+        async () => {
+          const response = await request.get(`${serviceWorkerUrl}?deployment-check=${Date.now()}`, {
+            headers: { "cache-control": "no-cache" }
+          });
+          return response.status() === 200 ? response.text() : "";
+        },
+        {
+          message: `Waiting for live Pages to deploy ${expectedCacheName}`,
+          timeout: 180_000,
+          intervals: [2_000, 5_000, 10_000]
+        }
+      )
+      .toContain(`const CACHE_NAME = "${expectedCacheName}";`);
+  }
+
+  const serviceWorkerResponse = await request.get(serviceWorkerUrl, {
+    headers: { "cache-control": "no-cache" }
+  });
   expect(serviceWorkerResponse.status()).toBe(200);
   const serviceWorker = await serviceWorkerResponse.text();
-  expect(serviceWorker).toContain("modeltab-shell-v40");
+  expect(serviceWorker).toMatch(/const CACHE_NAME = "modeltab-shell-v\d+";/);
   expect(serviceWorker).toContain("./tools/ai-studio-cleaner/index.html");
   expect(serviceWorker).toContain("./icons/icon-512.png");
   expect(serviceWorker).toContain("./screenshot.png");
