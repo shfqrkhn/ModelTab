@@ -102,6 +102,7 @@ AI Studio export cleanup:
 - Full local + live QA gate: `npm run qa`
 - Static regression gate: `npm test`
 - Workspace worker gate: `npm run test:worker`
+- Extracted module characterization gate: `npm run test:modules`
 - Local-file contract smoke: `npm run test:local-file`
 - Responsive visual gate: `npm run test:visual`
 - Local provider smoke gate: `npm run test:provider`
@@ -118,6 +119,12 @@ ModelTab is the main AI flagship. AI Studio Cleaner is maintained as a bundled M
 .
 ├── index.html
 ├── app.js
+├── modules/
+│   ├── provider.js
+│   ├── persistence.js
+│   ├── encrypted-backup.js
+│   ├── workspace.js
+│   └── chat-state.js
 ├── styles.css
 ├── workspace-worker.js
 ├── service-worker.js
@@ -126,6 +133,8 @@ ModelTab is the main AI flagship. AI Studio Cleaner is maintained as a bundled M
 └── tools/
     └── ai-studio-cleaner/
 ```
+
+See [`docs/MODULE_ARCHITECTURE.md`](./docs/MODULE_ARCHITECTURE.md) for the file-mode-safe module boundaries.
 
 ## Maintenance
 

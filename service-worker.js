@@ -1,9 +1,14 @@
-const CACHE_NAME = "modeltab-shell-v40";
+const CACHE_NAME = "modeltab-shell-v45";
 const SHELL = [
   "./",
   "./index.html",
   "./styles.css",
   "./app.js",
+  "./modules/provider.js",
+  "./modules/persistence.js",
+  "./modules/encrypted-backup.js",
+  "./modules/workspace.js",
+  "./modules/chat-state.js",
   "./workspace-worker.js",
   "./tools/ai-studio-cleaner/index.html",
   "./tools/ai-studio-cleaner/screenshot.png",
